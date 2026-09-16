@@ -1,7 +1,6 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Zachowany oryginalny plik + Dodana minimalizacja, usunięty Right Shift)
+-- Palofsc Script: AvalonHub dla Blox Strike (Całkowicie usunięty Right Shift + Przyciski minimalizacji)
 
 local coreGui = game:GetService("CoreGui")
-local userInputService = game:GetService("UserInputService")
 local httpService = game:GetService("HttpService")
 local players = game:GetService("Players")
 local localPlayer = players.LocalPlayer
@@ -366,13 +365,13 @@ local function addSlider(tab, title, min, max, callback)
     
     local dragging = false
     sliderBar.MouseButton1Down:Connect(function() dragging = true end)
-    userInputService.InputEnded:Connect(function(input)
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
     
-    userInputService.InputChanged:Connect(function(input)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local pos = userInputService:GetMouseLocation()
+            local pos = game:GetService("UserInputService"):GetMouseLocation()
             local absPos = sliderBar.AbsolutePosition
             local absSize = sliderBar.AbsoluteSize
             local percent = math.clamp((pos.X - absPos.X) / absSize.X, 0, 1)
@@ -386,7 +385,7 @@ local function addSlider(tab, title, min, max, callback)
     end)
 end
 
--- POPRAWIONA WERYFIKACJA KLUCZA Z OFICJALNYM ENDPOINTEM WORK.INK
+-- WERYFIKACJA KLUCZA WORK.INK
 SubmitBtn.MouseButton1Click:Connect(function()
     local enteredKey = KeyInput.Text
     
@@ -412,7 +411,6 @@ SubmitBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- KOPIOWANIE TWOJEGO LINKU WORK.INK DO PRZEGLĄDARKI
 GetKeyBtn.MouseButton1Click:Connect(function()
     pcall(function()
         setclipboard("https://work.ink/2YQZ/key-system")
@@ -422,7 +420,6 @@ GetKeyBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- KOPIOWANIE DISCORDA
 DiscordBtn.MouseButton1Click:Connect(function()
     pcall(function()
         setclipboard("https://discord.gg/BKJepBmwkf")
@@ -492,7 +489,7 @@ addToggle(tabAimbot, "Aimbot", function(state)
                                 local head = p.Character.Head
                                 local pos, onScreen = camera:WorldToViewportPoint(head.Position)
                                 if onScreen then
-                                    local mousePos = userInputService:GetMouseLocation()
+                                    local mousePos = game:GetService("UserInputService"):GetMouseLocation()
                                     local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
                                     if dist < shortestDist then
                                         shortestDist = dist
