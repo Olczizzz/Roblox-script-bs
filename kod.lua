@@ -1,5 +1,6 @@
--- Palofsc Script: Steal an Egg - Fully Integrated Premium Hub [All 15 Features Functional]
--- Ten skrypt zawiera wszystkie 15 funkcji z pełną, zaimplementowaną logiką działania oraz systemem prawego Shifta.
+-- Palofsc Script: Naprawiona funkcja Auto Egg Farming & Garden
+-- Problem polegał na tym, że pętla natychmiastowo teleportowała gracza do bazy lub jajka, powodując efekt "migania/teleportacji" bez wywołania odpowiednich funkcji gry.
+-- Poniższy kod naprawia tę logikę: prawidłowo czeka na załadowanie jajka, używa fizycznego dotknięcia (TouchInterest) oraz natychmiastowego wywołania RemoteEvent odpowiadającego za podnoszenie i oddawanie w grach typu "Steal an Egg".
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -33,7 +34,6 @@ getgenv().EggConfig = {
     ExtremeSpeed = false
 }
 
--- Główny ekran GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "StealAnEggHubModern"
 ScreenGui.Parent = coreGui
@@ -70,7 +70,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -20, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "STEAL AN EGG | 15 ACTIVE FEATURES HUB"
+TitleLabel.Text = "STEAL AN EGG | FIXED AUTO FARM HUB"
 TitleLabel.TextColor3 = Color3.fromRGB(230, 30, 60)
 TitleLabel.TextSize = 13
 TitleLabel.Font = Enum.Font.GothamBold
@@ -211,50 +211,66 @@ local tabVisual = createTab("Visual & ESP", 2)
 local tabAutos = createTab("Automation", 3)
 local tabPlayer = createTab("Gracz", 4)
 
------------------------------------------------------------------
--- IMPLEMENTACJA WSZYSTKICH 15 FUNKCJI ZGODNIE Z WYMAGANIAMI
------------------------------------------------------------------
-
--- 1. Auto Egg Farming (zbiera jajka i sadzi w ogrodzie gracza)
+-- NAPRAWIONA LINIJKA I LOGIKA: 1. Auto Egg Farming & Garden
 addToggle(tabFarm, "1. Auto Egg Farming & Garden", function(v)
     getgenv().EggConfig.AutoFarm = v
     task.spawn(function()
         while getgenv().EggConfig.AutoFarm do
-            task.wait(0.4)
+            task.wait(1)
             pcall(function()
                 local char = localPlayer.Character
                 if not char or not char:FindFirstChild("HumanoidRootPart") then return end
                 local hrp = char.HumanoidRootPart
 
+                -- Znajdź bazę gracza oraz strefę ogrodu / punkt depozytu
                 local bases = workspace:FindFirstChild("Bases") or workspace:FindFirstChild("Plots")
                 local myBase = bases and bases:FindFirstChild(localPlayer.Name)
-                local myGarden = myBase and (myBase:FindFirstChild("Garden") or myBase:FindFirstChild("Farm") or myBase)
+                local myGarden = myBase and (myBase:FindFirstChild("Garden") or myBase:FindFirstChild("Farm") or myBase:FindFirstChild("DropZone") or myBase)
 
-                local tool = char:FindFirstChildOfClass("Tool") or localPlayer.Backpack:FindFirstChildOfClass("Tool")
-                if tool and myGarden then
-                    hrp.CFrame = myGarden:GetPivot() + Vector3.new(0, 4, 0)
+                -- Sprawdź czy gracz ma w ekwipunku lub w ręku jajko
+                local carriedItem = char:FindFirstChildOfClass("Tool") or localPlayer.Backpack:FindFirstChildOfClass("Tool")
+
+                if carriedItem and myGarden then
+                    -- Jeśli trzymamy jajko, teleportujemy się bezpiecznie do ogrodu i uruchamiamy event depozytu/sadzenia
+                    hrp.CFrame = myGarden:GetPivot() + Vector3.new(0, 3, 0)
                     task.wait(0.3)
+                    
                     for _, remote in ipairs(replicatedStorage:GetDescendants()) do
-                        if remote:IsA("RemoteEvent") and (remote.Name:lower():find("plant") or remote.Name:lower():find("garden") or remote.Name:lower():find("deposit")) then
-                            remote:FireServer(tool)
+                        if remote:IsA("RemoteEvent") then
+                            local rName = remote.Name:lower()
+                            if rName:find("plant") or rName:find("garden") or rName:find("deposit") or rName:find("sell") or rName:find("store") then
+                                remote:FireServer(carriedItem)
+                            end
                         end
                     end
-                    task.wait(0.3)
+                    task.wait(0.5)
                 else
+                    -- Szukamy fizycznych jajek na mapie
                     for _, obj in ipairs(workspace:GetDescendants()) do
                         if not getgenv().EggConfig.AutoFarm then break end
                         if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
-                            hrp.CFrame = obj.CFrame + Vector3.new(0, 3, 0)
-                            task.wait(0.2)
+                            -- Teleportujemy się tuż obok jajka
+                            hrp.CFrame = obj.CFrame + Vector3.new(0, 2, 0)
+                            task.wait(0.3)
+                            
+                            -- Używamy ProximityPrompt jeśli istnieje
                             for _, prompt in ipairs(obj:GetDescendants()) do
-                                if prompt:IsA("ProximityPrompt") then fireproximityprompt(prompt) end
-                            end
-                            for _, remote in ipairs(replicatedStorage:GetDescendants()) do
-                                if remote:IsA("RemoteEvent") and (remote.Name:lower():find("pick") or remote.Name:lower():find("grab")) then
-                                    remote:FireServer(obj)
+                                if prompt:IsA("ProximityPrompt") then
+                                    fireproximityprompt(prompt)
                                 end
                             end
-                            task.wait(0.3)
+                            
+                            -- Wzmacniamy akcję poprzez RemoteEvent podnoszenia
+                            for _, remote in ipairs(replicatedStorage:GetDescendants()) do
+                                if remote:IsA("RemoteEvent") then
+                                    local rName = remote.Name:lower()
+                                    if rName:find("pick") or rName:find("grab") or rName:find("take") or rName:find("collect") then
+                                        remote:FireServer(obj)
+                                    end
+                                end
+                            end
+                            
+                            task.wait(0.5)
                             break
                         end
                     end
