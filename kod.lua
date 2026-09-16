@@ -1,8 +1,8 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Usunięty Aimbot + System Klucza i Discord)
--- Skrypt uruchamia najpierw okienko weryfikacji klucza z linkiem do Discorda, a po poprawnej weryfikacji otwiera główne menu.
+-- Palofsc Script: AvalonHub dla Blox Strike z wbudowanym API Work.ink
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
+local httpService = game:GetService("HttpService")
 local players = game:GetService("Players")
 local localPlayer = players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -14,20 +14,20 @@ end
 getgenv().AvalonConfig = {
     Wallhack = false,
     AntiAFK = false,
-    CorrectKey = "AVALON2026" -- Twój wygenerowany klucz
+    CustomPaidKey = "AVALON-VIP-KUPIONY-123", -- Twój ręczny klucz VIP (opcjonalnie)
+    WorkApiKey = "65ef8309-289b-42ef-85ea-566f3cbf5b31"
 }
 
--- Główny kontener GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AvalonHubBloxStrike"
 ScreenGui.Parent = coreGui
 
 -----------------------------------------------------------------
--- 1. OKNO SYSTEMU KLUCZY (KEY SYSTEM & DISCORD)
+-- 1. OKNO WERYFIKACJI KLUCZA
 -----------------------------------------------------------------
 local KeyFrame = Instance.new("Frame")
-KeyFrame.Size = UDim2.new(0, 400, 0, 240)
-KeyFrame.Position = UDim2.new(0.5, -200, 0.5, -120)
+KeyFrame.Size = UDim2.new(0, 400, 0, 270)
+KeyFrame.Position = UDim2.new(0.5, -200, 0.5, -135)
 KeyFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 KeyFrame.BorderSizePixel = 0
 KeyFrame.Active = true
@@ -46,7 +46,7 @@ KeyStroke.Parent = KeyFrame
 local KeyTitle = Instance.new("TextLabel")
 KeyTitle.Size = UDim2.new(1, 0, 0, 40)
 KeyTitle.BackgroundTransparency = 1
-KeyTitle.Text = "AVALON HUB - WERYFIKACJA KLUCZA"
+KeyTitle.Text = "AVALON HUB - KLUCZE WORK.INK (12H)"
 KeyTitle.TextColor3 = Color3.fromRGB(220, 30, 50)
 KeyTitle.TextSize = 13
 KeyTitle.Font = Enum.Font.GothamBold
@@ -54,10 +54,10 @@ KeyTitle.Parent = KeyFrame
 
 local KeyInput = Instance.new("TextBox")
 KeyInput.Size = UDim2.new(0.85, 0, 0, 38)
-KeyInput.Position = UDim2.new(0.075, 0, 0.3, 0)
+KeyInput.Position = UDim2.new(0.075, 0, 0.22, 0)
 KeyInput.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-KeyInput.PlaceholderText = "Wpisz swój klucz tutaj..."
+KeyInput.PlaceholderText = "Wpisz wygenerowany klucz..."
 KeyInput.Text = ""
 KeyInput.TextSize = 12
 KeyInput.Font = Enum.Font.Gotham
@@ -69,7 +69,7 @@ InputCorner.Parent = KeyInput
 
 local SubmitBtn = Instance.new("TextButton")
 SubmitBtn.Size = UDim2.new(0.85, 0, 0, 38)
-SubmitBtn.Position = UDim2.new(0.075, 0, 0.53, 0)
+SubmitBtn.Position = UDim2.new(0.075, 0, 0.43, 0)
 SubmitBtn.BackgroundColor3 = Color3.fromRGB(180, 20, 40)
 SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 SubmitBtn.Text = "ZATWIERDŹ KLUCZ"
@@ -81,13 +81,27 @@ local BtnCorner = Instance.new("UICorner")
 BtnCorner.CornerRadius = UDim.new(0, 4)
 BtnCorner.Parent = SubmitBtn
 
+local GetKeyBtn = Instance.new("TextButton")
+GetKeyBtn.Size = UDim2.new(0.85, 0, 0, 32)
+GetKeyBtn.Position = UDim2.new(0.075, 0, 0.63, 0)
+GetKeyBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+GetKeyBtn.TextColor3 = Color3.fromRGB(255, 170, 50)
+GetKeyBtn.Text = "Generuj / Pobierz darmowy klucz"
+GetKeyBtn.TextSize = 11
+GetKeyBtn.Font = Enum.Font.GothamMedium
+GetKeyBtn.Parent = KeyFrame
+
+local GetKeyCorner = Instance.new("UICorner")
+GetKeyCorner.CornerRadius = UDim.new(0, 4)
+GetKeyCorner.Parent = GetKeyBtn
+
 local DiscordBtn = Instance.new("TextButton")
-DiscordBtn.Size = UDim2.new(0.85, 0, 0, 32)
-DiscordBtn.Position = UDim2.new(0.075, 0, 0.76, 0)
+DiscordBtn.Size = UDim2.new(0.85, 0, 0, 28)
+DiscordBtn.Position = UDim2.new(0.075, 0, 0.81, 0)
 DiscordBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 DiscordBtn.TextColor3 = Color3.fromRGB(150, 160, 255)
-DiscordBtn.Text = "Discord: discord.gg/TwojLink"
-DiscordBtn.TextSize = 11
+DiscordBtn.Text = "Kup klucz VIP / Discord"
+DiscordBtn.TextSize = 10
 DiscordBtn.Font = Enum.Font.GothamMedium
 DiscordBtn.Parent = KeyFrame
 
@@ -96,7 +110,7 @@ DiscCorner.CornerRadius = UDim.new(0, 4)
 DiscCorner.Parent = DiscordBtn
 
 -----------------------------------------------------------------
--- 2. GŁÓWNE OKNO HUBA (UKRYTE DO MOMENTU POPRAWNEGO KLUCZA)
+-- 2. GŁÓWNE OKNO HUBA (UKRYTE DO MOMENTU WERYFIKACJI)
 -----------------------------------------------------------------
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 480, 0, 300)
@@ -105,7 +119,7 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
-MainFrame.Visible = false -- Ukryte na start
+MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -148,7 +162,6 @@ HintLabel.Font = Enum.Font.Gotham
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 HintLabel.Parent = TopBar
 
--- Pasek boczny z zakładkami
 local TabContainer = Instance.new("Frame")
 TabContainer.Size = UDim2.new(0, 130, 1, -45)
 TabContainer.Position = UDim2.new(0, 5, 0, 40)
@@ -245,32 +258,80 @@ local function addToggle(tab, title, callback)
     end)
 end
 
--- Obsługa weryfikacji klucza
+-- WERYFIKACJA KLUCZA
 SubmitBtn.MouseButton1Click:Connect(function()
-    if KeyInput.Text == getgenv().AvalonConfig.CorrectKey then
-        KeyFrame:Destroy() -- Usuwamy okno klucza
-        MainFrame.Visible = true -- Pokazujemy główne menu AvalonHub
+    local enteredKey = KeyInput.Text
+    
+    if enteredKey == getgenv().AvalonConfig.CustomPaidKey then
+        KeyFrame:Destroy()
+        MainFrame.Visible = true
+        return
+    end
+    
+    local success, response = pcall(function()
+        local url = "https://work.ink/api/v2/token/verify/" .. httpService:UrlEncode(enteredKey)
+        return httpService:JSONDecode(game:HttpGet(url))
+    end)
+    
+    if success and response and (response.valid == true or response.success == true) then
+        KeyFrame:Destroy()
+        MainFrame.Visible = true
     else
         KeyInput.Text = ""
-        KeyInput.PlaceholderText = "Błędny klucz! Spróbuj ponownie."
+        KeyInput.PlaceholderText = "Niepoprawny lub wygasły klucz!"
     end
 end)
 
--- Przycisk Discord (Kopiowanie linku do schowka, jeśli executor wspiera setclipboard)
-DiscordBtn.MouseButton1Click:Connect(function()
-    pcall(function()
-        setclipboard("https://discord.gg/TwojLink")
-        DiscordBtn.Text = "Skopiowano link do schowka!"
-        task.wait(2)
-        DiscordBtn.Text = "Discord: discord.gg/TwojLink"
+-- AUTOMATYCZNE TWORZENIE LINKU PRZEZ API WORK.INK PO KLIKNIĘCIU
+GetKeyBtn.MouseButton1Click:Connect(function()
+    GetKeyBtn.Text = "Generowanie linku..."
+    
+    task.spawn(function()
+        local success, result = pcall(function()
+            local requestData = httpService:JSONEncode({
+                title = "AvalonHub Key System",
+                destination = "https://discord.gg/TwojLink", -- Zmień na link docelowy po przejściu reklam
+                link_description = "Wygeneruj swój darmowy klucz na 12h"
+            })
+            
+            local response = httpService:PostAsync(
+                "https://dashboard.work.ink/_api/v1/link",
+                requestData,
+                Enum.HttpContentType.ApplicationJson,
+                false,
+                {
+                    ["X-Api-Key"] = getgenv().AvalonConfig.WorkApiKey
+                }
+            )
+            
+            return httpService:JSONDecode(response)
+        end)
+        
+        if success and result and result.url then
+            setclipboard(result.url)
+            GetKeyBtn.Text = "Skopiowano link do schowka!"
+            task.wait(3)
+            GetKeyBtn.Text = "Generuj / Pobierz darmowy klucz"
+        else
+            GetKeyBtn.Text = "Błąd generowania linku!"
+            task.wait(3)
+            GetKeyBtn.Text = "Generuj / Pobierz darmowy klucz"
+        end
     end)
 end)
 
--- Tworzenie zakładek w głównym menu (Wallhack oraz Misc/Anti-AFK)
+DiscordBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        setclipboard("https://discord.gg/TwojLink")
+        DiscordBtn.Text = "Skopiowano Discord do schowka!"
+        task.wait(2)
+        DiscordBtn.Text = "Kup klucz VIP / Discord"
+    end)
+end)
+
 local tabWallhack = createTab("Wallhack", 1)
 local tabMisc = createTab("Misc / AFK", 2)
 
--- 1. Wallhack (ESP)
 addToggle(tabWallhack, "Wallhack (ESP)", function(state)
     getgenv().AvalonConfig.Wallhack = state
     task.spawn(function()
@@ -305,7 +366,6 @@ addToggle(tabWallhack, "Wallhack (ESP)", function(state)
     end)
 end)
 
--- 2. Anti-AFK
 addToggle(tabMisc, "Anti-AFK", function(state)
     getgenv().AvalonConfig.AntiAFK = state
     task.spawn(function()
@@ -330,13 +390,8 @@ addToggle(tabMisc, "Anti-AFK", function(state)
     end)
 end)
 
--- Ukrywanie / pokazywanie głównego okna pod prawym Shiftem
 userInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.RightShift then
-        if MainFrame.Visible then
-            MainFrame.Visible = false
-        else
-            MainFrame.Visible = true
-        end
+        MainFrame.Visible = not MainFrame.Visible
     end
 end)
