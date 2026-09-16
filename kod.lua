@@ -1,5 +1,5 @@
--- Palofsc Script: Steal an Egg - Custom Farming & Teleports (Angel/Devil & Titan Temple)
--- Skrypt dodaje dedykowane przyciski i funkcje automatycznego farmingu dla ostatnich krain oraz baz w oparciu o dostarczone koordynaty.
+-- Palofsc Script: Poprawiony system farmingu (Teleport -> Czas na zebranie E -> Bezpieczny powrót do bazy)
+-- Dodano zabezpieczenie przed śmiercią, czas na interakcję z jajkiem oraz pełne wsparcie dla Angel/Devil i Titan Temple.
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -54,9 +54,44 @@ local function getClosestBase()
     return closest
 end
 
--- Symulacja przytrzymania przycisku E / zbierania (2 sekundy)
-local function simulateEggCollection()
+-- Bezpieczna funkcja znoszenia i zbierania jajka
+local function executeSafeFarm(eggPosition)
+    local char = localPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
+    local hrp = char.HumanoidRootPart
+    local humanoid = char.Humanoid
+
+    if humanoid.Health <= 0 then return end
+
+    -- 1. Wyłączenie kolizji i wagi części, aby postać nie zginęła podczas teleportu
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    -- 2. Teleportacja do jajka (nieco nad nim, aby uniknąć zaklinowania w podłodze)
+    hrp.CFrame = CFrame.new(eggPosition + Vector3.new(0, 3, 0))
+    
+    -- Wyzerowanie prędkości ruchu, żeby silnik gry nie zabił postaći przy nagłej zmianie pozycji
+    if char:FindFirstChild("HumanoidRootPart") then
+        char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    end
+
+    -- 3. Odczekanie 2 sekund na zebranie jajka / trzymanie przycisku E
     task.wait(2)
+
+    if not char:FindFirstChild("HumanoidRootPart") then return end
+
+    -- 4. Teleportacja do bazy
+    local basePos = getClosestBase()
+    hrp.CFrame = CFrame.new(basePos + Vector3.new(0, 3, 0))
+    if char:FindFirstChild("HumanoidRootPart") then
+        char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    end
+
+    -- 5. Czas na zdeponowanie jajka w bazie
+    task.wait(1.5)
 end
 
 -- Główny kontener GUI
@@ -96,7 +131,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -20, 1, 0)
 TitleLabel.Position = UDim2.new(0, 12, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "STEAL AN EGG | CUSTOM FARM & XYZ"
+TitleLabel.Text = "STEAL AN EGG | SAFE FARM & XYZ"
 TitleLabel.TextColor3 = Color3.fromRGB(230, 30, 60)
 TitleLabel.TextSize = 13
 TitleLabel.Font = Enum.Font.GothamBold
@@ -134,7 +169,7 @@ CoordsStroke.Color = Color3.fromRGB(220, 20, 60)
 CoordsStroke.Thickness = 1.5
 CoordsStroke.Parent = CoordsDisplay
 
--- Zawartość interfejsu (przyciski)
+-- Zawartość interfejsu
 local ContentFrame = Instance.new("ScrollingFrame")
 ContentFrame.Size = UDim2.new(1, -20, 1, -50)
 ContentFrame.Position = UDim2.new(0, 10, 0, 42)
@@ -171,7 +206,7 @@ local function createButton(text, callback)
     return btn
 end
 
--- 1. Przycisk XYZ
+-- Przycisk XYZ
 local XYZButton = createButton("Pokaż / Ukryj Pozycję XYZ: [OFF]", function()
     getgenv().FarmConfig.XYZVisible = not getgenv().FarmConfig.XYZVisible
     CoordsDisplay.Visible = getgenv().FarmConfig.XYZVisible
@@ -184,57 +219,32 @@ local XYZButton = createButton("Pokaż / Ukryj Pozycję XYZ: [OFF]", function()
     end
 end)
 
--- 2. Angel/Devil Farm Toggle
+-- Angel / Devil Farm Toggle
 createButton("Angel/Devil Farm (Ostatnia Kraina -> Baza)", function()
     getgenv().FarmConfig.AngelDevilFarm = not getgenv().FarmConfig.AngelDevilFarm
     task.spawn(function()
         while getgenv().FarmConfig.AngelDevilFarm do
             task.wait(0.5)
-            pcall(function()
-                local char = localPlayer.Character
-                if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-                local hrp = char.HumanoidRootPart
-
-                -- Teleport do jajka Angel/Devil
-                hrp.CFrame = CFrame.new(angelDevilEgg)
-                simulateEggCollection()
-
-                -- Teleport do bazy
-                local targetBase = getClosestBase()
-                hrp.CFrame = CFrame.new(targetBase)
-                task.wait(1)
-            end)
+            executeSafeFarm(angelDevilEgg)
         end
     end)
 end)
 
--- 3. Titan Temple Farm Toggle (Przedostatnia kraina)
+-- Titan Temple Farm Toggle (Przedostatnia kraina - wszystkie 4 jajka po kolei)
 createButton("Titan Temple Farm (Przedostatnia Kraina -> Baza)", function()
     getgenv().FarmConfig.TitanTempleFarm = not getgenv().FarmConfig.TitanTempleFarm
     task.spawn(function()
         while getgenv().FarmConfig.TitanTempleFarm do
             task.wait(0.5)
-            pcall(function()
-                local char = localPlayer.Character
-                if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-                local hrp = char.HumanoidRootPart
-
-                -- Pętla po wszystkich jajkach Titan Temple
-                for _, eggPos in ipairs(titanEggs) do
-                    if not getgenv().FarmConfig.TitanTempleFarm then break end
-                    hrp.CFrame = CFrame.new(eggPos)
-                    simulateEggCollection()
-
-                    local targetBase = getClosestBase()
-                    hrp.CFrame = CFrame.new(targetBase)
-                    task.wait(1)
-                end
-            end)
+            for _, eggPos in ipairs(titanEggs) do
+                if not getgenv().FarmConfig.TitanTempleFarm then break end
+                executeSafeFarm(eggPos)
+            end
         end
     end)
 end)
 
--- Aktualizacja koordynatów XYZ w prawym górnym rogu
+-- Aktualizacja współrzędnych w prawym górnym rogu
 runService.RenderStepped:Connect(function()
     if getgenv().FarmConfig.XYZVisible then
         pcall(function()
@@ -247,7 +257,7 @@ runService.RenderStepped:Connect(function()
     end
 end)
 
--- Obsługa prawego Shifta do ukrywania/pokazywania okna
+-- Ukrywanie okna pod prawym Shiftem
 userInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.RightShift then
         MainFrame.Visible = not MainFrame.Visible
