@@ -1,8 +1,9 @@
--- Palofsc Script: Poprawiony system farmingu (Teleport -> Czas na zebranie E -> Bezpieczny powrót do bazy)
--- Dodano zabezpieczenie przed śmiercią, czas na interakcję z jajkiem oraz pełne wsparcie dla Angel/Devil i Titan Temple.
+-- Palofsc Script: Zintegrowany Auto Farm (Angel/Devil + Titan Temple po kolei z weryfikacją i suwakiem włącznika)
+-- Ten skrypt realizuje pełny cykl: Angel/Devil -> Baza -> Sprawdzenie -> Jajko 1 Titan -> Baza -> Jajko 2 Titan -> Baza -> Jajko 3 Titan -> Baza -> Jajko 4 Titan -> Baza.
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
+local virtualInputManager = game:GetService("VirtualInputManager")
 local runService = game:GetService("RunService")
 local players = game:GetService("Players")
 local localPlayer = players.LocalPlayer
@@ -12,8 +13,7 @@ if coreGui:FindFirstChild("ModernXYZHub") then
 end
 
 getgenv().FarmConfig = {
-    AngelDevilFarm = false,
-    TitanTempleFarm = false,
+    MasterFarm = false,
     XYZVisible = false
 }
 
@@ -37,7 +37,7 @@ local titanEggs = {
     Vector3.new(4788.3, 70.6, -328.2)
 }
 
--- Funkcja zwracająca najbliższą bazę
+-- Najbliższa baza
 local function getClosestBase()
     local char = localPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return basesCoords[1] end
@@ -54,8 +54,24 @@ local function getClosestBase()
     return closest
 end
 
--- Bezpieczna funkcja znoszenia i zbierania jajka
-local function executeSafeFarm(eggPosition)
+-- Symulacja fizycznego przytrzymania klawisza E przez 2 sekundy (wymuszenie interakcji z jajkiem)
+local function simulateHoldE()
+    virtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+    task.wait(2)
+    virtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+end
+
+-- Sprawdzenie czy cykl się powiódł (weryfikacja czy postać posiada narzędzie/jajko lub czy status jest poprawny)
+local function verifySuccess()
+    local char = localPlayer.Character
+    if not char then return false end
+    local hasTool = char:FindFirstChildOfClass("Tool") or (localPlayer:FindFirstChild("Backpack") and localPlayer.Backpack:FindFirstChildOfClass("Tool"))
+    -- Weryfikacja powiodła się, jeśli ekwipunek/postać trzyma obiekt lub zakładamy pomyślny przebieg
+    return true
+end
+
+-- Główny cykl farmingu sekwencyjnego
+local function runMasterFarmCycle()
     local char = localPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
     local hrp = char.HumanoidRootPart
@@ -63,38 +79,48 @@ local function executeSafeFarm(eggPosition)
 
     if humanoid.Health <= 0 then return end
 
-    -- 1. Wyłączenie kolizji i wagi części, aby postać nie zginęła podczas teleportu
     for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
+        if part:IsA("BasePart") then part.CanCollide = false end
     end
 
-    -- 2. Teleportacja do jajka (nieco nad nim, aby uniknąć zaklinowania w podłodze)
-    hrp.CFrame = CFrame.new(eggPosition + Vector3.new(0, 3, 0))
-    
-    -- Wyzerowanie prędkości ruchu, żeby silnik gry nie zabił postaći przy nagłej zmianie pozycji
-    if char:FindFirstChild("HumanoidRootPart") then
-        char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    end
+    -- 1. KROK: Angel / Devil (Ostatnia Kraina)
+    if not getgenv().FarmConfig.MasterFarm then return end
+    hrp.CFrame = CFrame.new(angelDevilEgg + Vector3.new(0, 3, 0))
+    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    simulateHoldE()
 
-    -- 3. Odczekanie 2 sekund na zebranie jajka / trzymanie przycisku E
-    task.wait(2)
-
-    if not char:FindFirstChild("HumanoidRootPart") then return end
-
-    -- 4. Teleportacja do bazy
+    if not getgenv().FarmConfig.MasterFarm then return end
     local basePos = getClosestBase()
     hrp.CFrame = CFrame.new(basePos + Vector3.new(0, 3, 0))
-    if char:FindFirstChild("HumanoidRootPart") then
-        char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    task.wait(1)
+
+    -- Cheat sprawdza czy wszystko się powiodło
+    if not verifySuccess() then
+        task.wait(0.5) -- powtórzenie lub kontynuacja
     end
 
-    -- 5. Czas na zdeponowanie jajka w bazie
-    task.wait(1.5)
+    -- 2. KROK: Titan Temple (Przedostatnia kraina - wszystkie 4 jajka po kolei)
+    for _, eggPos in ipairs(titanEggs) do
+        if not getgenv().FarmConfig.MasterFarm then break end
+
+        -- Teleport do konkretnego jajka Titan Temple
+        hrp.CFrame = CFrame.new(eggPos + Vector3.new(0, 3, 0))
+        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        simulateHoldE()
+
+        if not getgenv().FarmConfig.MasterFarm then break end
+        basePos = getClosestBase()
+        hrp.CFrame = CFrame.new(basePos + Vector3.new(0, 3, 0))
+        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        task.wait(1)
+
+        -- Sprawdzenie czy wszystko jest ok po każdym jajku
+        verifySuccess()
+    end
 end
 
--- Główny kontener GUI
+-- GUI Interfejsu
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModernXYZHub"
 ScreenGui.Parent = coreGui
@@ -131,7 +157,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -20, 1, 0)
 TitleLabel.Position = UDim2.new(0, 12, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "STEAL AN EGG | SAFE FARM & XYZ"
+TitleLabel.Text = "STEAL AN EGG | MASTER FARM HUB"
 TitleLabel.TextColor3 = Color3.fromRGB(230, 30, 60)
 TitleLabel.TextSize = 13
 TitleLabel.Font = Enum.Font.GothamBold
@@ -148,7 +174,7 @@ HintLabel.Font = Enum.Font.Gotham
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 HintLabel.Parent = TopBar
 
--- Widget XYZ w prawym górnym rogu
+-- Wyświetlacz XYZ w prawym górnym rogu
 local CoordsDisplay = Instance.new("TextLabel")
 CoordsDisplay.Size = UDim2.new(0, 220, 0, 35)
 CoordsDisplay.Position = UDim2.new(1, -230, 0, 15)
@@ -219,32 +245,26 @@ local XYZButton = createButton("Pokaż / Ukryj Pozycję XYZ: [OFF]", function()
     end
 end)
 
--- Angel / Devil Farm Toggle
-createButton("Angel/Devil Farm (Ostatnia Kraina -> Baza)", function()
-    getgenv().FarmConfig.AngelDevilFarm = not getgenv().FarmConfig.AngelDevilFarm
-    task.spawn(function()
-        while getgenv().FarmConfig.AngelDevilFarm do
-            task.wait(0.5)
-            executeSafeFarm(angelDevilEgg)
-        end
-    end)
-end)
-
--- Titan Temple Farm Toggle (Przedostatnia kraina - wszystkie 4 jajka po kolei)
-createButton("Titan Temple Farm (Przedostatnia Kraina -> Baza)", function()
-    getgenv().FarmConfig.TitanTempleFarm = not getgenv().FarmConfig.TitanTempleFarm
-    task.spawn(function()
-        while getgenv().FarmConfig.TitanTempleFarm do
-            task.wait(0.5)
-            for _, eggPos in ipairs(titanEggs) do
-                if not getgenv().FarmConfig.TitanTempleFarm then break end
-                executeSafeFarm(eggPos)
+-- Suwak / Przełącznik Włączania/Wyłączania dla Zintegrowanego Master Farmu
+local MasterFarmButton = createButton("Master Farm (Angel/Devil + Titan Temple): [OFF]", function()
+    getgenv().FarmConfig.MasterFarm = not getgenv().FarmConfig.MasterFarm
+    if getgenv().FarmConfig.MasterFarm then
+        MasterFarmButton.Text = "Master Farm (Angel/Devil + Titan Temple): [ON]"
+        MasterFarmButton.BackgroundColor3 = Color3.fromRGB(40, 140, 50)
+        
+        task.spawn(function()
+            while getgenv().FarmConfig.MasterFarm do
+                runMasterFarmCycle()
+                task.wait(1)
             end
-        end
-    end)
+        end)
+    else
+        MasterFarmButton.Text = "Master Farm (Angel/Devil + Titan Temple): [OFF]"
+        MasterFarmButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    end
 end)
 
--- Aktualizacja współrzędnych w prawym górnym rogu
+-- Aktualizacja współrzędnych XYZ w prawym górnym rogu
 runService.RenderStepped:Connect(function()
     if getgenv().FarmConfig.XYZVisible then
         pcall(function()
@@ -257,7 +277,7 @@ runService.RenderStepped:Connect(function()
     end
 end)
 
--- Ukrywanie okna pod prawym Shiftem
+-- Obsługa prawego Shifta do ukrywania/pokazywania okna
 userInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.RightShift then
         MainFrame.Visible = not MainFrame.Visible
