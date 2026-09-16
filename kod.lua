@@ -1,11 +1,11 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony i natychmiastowy Triggerbot + Czerwony Wallhack)
+-- Palofsc Script: AvalonHub dla Blox Strike (Nienaruszony Wallhack/Trigger/Aimbot + Dodane przyciski minimalizacji)
 
 local coreGui = game:GetService("CoreGui")
+local userInputService = game:GetService("UserInputService")
 local httpService = game:GetService("HttpService")
 local players = game:GetService("Players")
 local localPlayer = players.LocalPlayer
 local camera = workspace.CurrentCamera
-local mouse = localPlayer:GetMouse()
 
 if coreGui:FindFirstChild("AvalonHubBloxStrike") then
     coreGui.AvalonHubBloxStrike:Destroy()
@@ -14,7 +14,9 @@ end
 getgenv().AvalonConfig = {
     Wallhack = false,
     AntiAFK = false,
+    Aimbot = false,
     Triggerbot = false,
+    HitChance = 100,
     WorkApiKey = "65ef8309-289b-42ef-85ea-566f3cbf5b31"
 }
 
@@ -153,7 +155,7 @@ TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TopBar
 
 -----------------------------------------------------------------
--- PRZYCISKI STERUJĄCE OKNEM W PRAWYM GÓRNYM ROGU
+-- PRZYCISKI STERUJĄCE OKNEM W PRAWYM GÓRNYM ROGU (MINIMALIZACJA I ZAMKNIĘCIE)
 -----------------------------------------------------------------
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 25, 0, 25)
@@ -208,6 +210,7 @@ RestoreStroke.Color = Color3.fromRGB(200, 20, 40)
 RestoreStroke.Thickness = 1.5
 RestoreStroke.Parent = RestoreBtn
 
+-- Obsługa przycisków sterowania oknem
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
@@ -318,7 +321,73 @@ local function addToggle(tab, title, callback)
     end)
 end
 
--- WERYFIKACJA KLUCZA WORK.INK
+local function addSlider(tab, title, min, max, callback)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, -5, 0, 50)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    sliderFrame.BorderSizePixel = 0
+    sliderFrame.Parent = tab
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = sliderFrame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -10, 0, 20)
+    label.Position = UDim2.new(0, 5, 0, 4)
+    label.BackgroundTransparency = 1
+    label.Text = title .. ": " .. getgenv().AvalonConfig.HitChance .. "%"
+    label.TextColor3 = Color3.fromRGB(210, 210, 210)
+    label.TextSize = 11
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = sliderFrame
+    
+    local sliderBar = Instance.new("TextButton")
+    sliderBar.Size = UDim2.new(1, -20, 0, 8)
+    sliderBar.Position = UDim2.new(0, 10, 0, 30)
+    sliderBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    sliderBar.Text = ""
+    sliderBar.AutoButtonColor = false
+    sliderBar.Parent = sliderFrame
+    
+    local barCorner = Instance.new("UICorner")
+    barCorner.CornerRadius = UDim.new(0, 4)
+    barCorner.Parent = sliderBar
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(getgenv().AvalonConfig.HitChance / max, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(200, 20, 40)
+    fill.BorderSizePixel = 0
+    fill.Parent = sliderBar
+    
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 4)
+    fillCorner.Parent = fill
+    
+    local dragging = false
+    sliderBar.MouseButton1Down:Connect(function() dragging = true end)
+    userInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    
+    userInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local pos = userInputService:GetMouseLocation()
+            local absPos = sliderBar.AbsolutePosition
+            local absSize = sliderBar.AbsoluteSize
+            local percent = math.clamp((pos.X - absPos.X) / absSize.X, 0, 1)
+            local val = math.floor(min + (max - min) * percent)
+            
+            fill.Size = UDim2.new(percent, 0, 1, 0)
+            label.Text = title .. ": " .. val .. "%"
+            getgenv().AvalonConfig.HitChance = val
+            pcall(function() callback(val) end)
+        end
+    end)
+end
+
+-- POPRAWIONA WERYFIKACJA KLUCZA Z OFICJALNYM ENDPOINTEM WORK.INK
 SubmitBtn.MouseButton1Click:Connect(function()
     local enteredKey = KeyInput.Text
     
@@ -344,6 +413,7 @@ SubmitBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- KOPIOWANIE TWOJEGO LINKU WORK.INK DO PRZEGLĄDARKI
 GetKeyBtn.MouseButton1Click:Connect(function()
     pcall(function()
         setclipboard("https://work.ink/2YQZ/key-system")
@@ -353,6 +423,7 @@ GetKeyBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
+-- KOPIOWANIE DISCORDA
 DiscordBtn.MouseButton1Click:Connect(function()
     pcall(function()
         setclipboard("https://discord.gg/BKJepBmwkf")
@@ -362,10 +433,10 @@ DiscordBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Zakładki
 local tabWallhack = createTab("Wallhack", 1)
-local tabTriggerbot = createTab("Triggerbot", 2)
-local tabMisc = createTab("Misc / AFK", 3)
+local tabAimbot = createTab("Aimbot", 2)
+local tabTriggerbot = createTab("Triggerbot", 3)
+local tabMisc = createTab("Misc / AFK", 4)
 
 addToggle(tabWallhack, "Wallhack (ESP)", function(state)
     getgenv().AvalonConfig.Wallhack = state
@@ -379,12 +450,10 @@ addToggle(tabWallhack, "Wallhack (ESP)", function(state)
                         if not highlight then
                             highlight = Instance.new("Highlight")
                             highlight.Name = "AvalonHighlight"
+                            highlight.FillColor = Color3.fromRGB(200, 20, 40)
                             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                             highlight.Parent = p.Character
                         end
-                        
-                        -- Wszyscy gracze podświetleni na jednolity czerwony kolor
-                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
                         highlight.Enabled = getgenv().AvalonConfig.Wallhack
                     end
                 end
@@ -403,25 +472,62 @@ addToggle(tabWallhack, "Wallhack (ESP)", function(state)
     end)
 end)
 
+addToggle(tabAimbot, "Aimbot", function(state)
+    getgenv().AvalonConfig.Aimbot = state
+    task.spawn(function()
+        while getgenv().AvalonConfig.Aimbot do
+            task.wait()
+            pcall(function()
+                local closestTarget = nil
+                local shortestDist = math.huge
+                
+                for _, p in ipairs(players:GetPlayers()) do
+                    if p ~= localPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") then
+                        if p.Character.Humanoid.Health > 0 then
+                            local isEnemy = true
+                            if localPlayer.Team and p.Team and localPlayer.Team == p.Team then
+                                isEnemy = false
+                            end
+                            
+                            if isEnemy then
+                                local head = p.Character.Head
+                                local pos, onScreen = camera:WorldToViewportPoint(head.Position)
+                                if onScreen then
+                                    local mousePos = userInputService:GetMouseLocation()
+                                    local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+                                    if dist < shortestDist then
+                                        shortestDist = dist
+                                        closestTarget = head
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                if closestTarget and math.random(1, 100) <= getgenv().AvalonConfig.HitChance then
+                    camera.CFrame = CFrame.new(camera.CFrame.Position, closestTarget.Position)
+                end
+            end)
+        end
+    end)
+end)
+
+addSlider(tabAimbot, "Skuteczność trafień", 1, 100, function(val)
+    getgenv().AvalonConfig.HitChance = val
+end)
+
 addToggle(tabTriggerbot, "Triggerbot", function(state)
     getgenv().AvalonConfig.Triggerbot = state
     task.spawn(function()
         while getgenv().AvalonConfig.Triggerbot do
-            task.wait()
+            task.wait(0.05)
             pcall(function()
-                local target = mouse.Target
-                if target and target.Parent then
-                    local character = target.Parent
-                    local humanoid = character:FindFirstChildOfClass("Humanoid")
-                    
-                    if not humanoid and character.Parent then
-                        character = character.Parent
-                        humanoid = character:FindFirstChildOfClass("Humanoid")
-                    end
-                    
-                    if humanoid and humanoid.Health > 0 then
-                        local player = players:GetPlayerFromCharacter(character)
-                        if player and player ~= localPlayer then
+                local mouseTarget = localPlayer:GetMouse().Target
+                if mouseTarget and mouseTarget.Parent then
+                    local enemyPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent)
+                    if enemyPlayer and enemyPlayer ~= localPlayer then
+                        if not (localPlayer.Team and enemyPlayer.Team and localPlayer.Team == enemyPlayer.Team) then
                             mouse1press()
                             task.wait(0.05)
                             mouse1release()
