@@ -1,4 +1,4 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Usunięty Aimbot, Kolorowanie Teamu/Wrogów oraz Triggerbot)
+-- Palofsc Script: AvalonHub dla Blox Strike (Usunięty Aimbot, Poprawione kolory drużyn i Triggerbot)
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -258,7 +258,7 @@ local function addToggle(tab, title, callback)
     end)
 end
 
--- POPRAWIONA WERYFIKACJA KLUCZA Z OFICJALNYM ENDPOINTEM WORK.INK
+-- WERYFIKACJA KLUCZA WORK.INK
 SubmitBtn.MouseButton1Click:Connect(function()
     local enteredKey = KeyInput.Text
     
@@ -284,7 +284,6 @@ SubmitBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- KOPIOWANIE TWOJEGO LINKU WORK.INK DO PRZEGLĄDARKI
 GetKeyBtn.MouseButton1Click:Connect(function()
     pcall(function()
         setclipboard("https://work.ink/2YQZ/key-system")
@@ -294,7 +293,6 @@ GetKeyBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- KOPIOWANIE DISCORDA
 DiscordBtn.MouseButton1Click:Connect(function()
     pcall(function()
         setclipboard("https://discord.gg/BKJepBmwkf")
@@ -304,6 +302,7 @@ DiscordBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
+-- Tworzenie zakładek (Bez Aimbota)
 local tabWallhack = createTab("Wallhack", 1)
 local tabTriggerbot = createTab("Triggerbot", 2)
 local tabMisc = createTab("Misc / AFK", 3)
@@ -324,16 +323,22 @@ addToggle(tabWallhack, "Wallhack (ESP)", function(state)
                             highlight.Parent = p.Character
                         end
                         
-                        -- Sprawdzenie drużyny: sojusznicy zieloni, wrogowie czerwoni
-                        local isEnemy = true
-                        if localPlayer.Team and p.Team and localPlayer.Team == p.Team then
-                            isEnemy = false
+                        -- Poprawione sprawdzanie drużyny (uwzględniające właściwość Team oraz TeamColor)
+                        local isTeamMate = false
+                        if localPlayer.Team and p.Team then
+                            if localPlayer.Team == p.Team then
+                                isTeamMate = true
+                            end
+                        elseif localPlayer.TeamColor and p.TeamColor then
+                            if localPlayer.TeamColor == p.TeamColor then
+                                isTeamMate = true
+                            end
                         end
                         
-                        if isEnemy then
-                            highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Czerwony dla wroga
+                        if isTeamMate then
+                            highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Zielony dla teammate'a
                         else
-                            highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Zielony dla sojusznika
+                            highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Czerwony dla wroga
                         end
                         
                         highlight.Enabled = getgenv().AvalonConfig.Wallhack
@@ -364,13 +369,19 @@ addToggle(tabTriggerbot, "Triggerbot", function(state)
                 if mouseTarget and mouseTarget.Parent then
                     local enemyPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent)
                     if enemyPlayer and enemyPlayer ~= localPlayer then
-                        -- Strzelaj tylko do wrogów (pomijaj graczy z tej samej drużyny)
-                        local isEnemy = true
-                        if localPlayer.Team and enemyPlayer.Team and localPlayer.Team == enemyPlayer.Team then
-                            isEnemy = false
+                        -- Sprawdzenie czy cel to wróg (strzelaj tylko w czerwonych)
+                        local isTeamMate = false
+                        if localPlayer.Team and enemyPlayer.Team then
+                            if localPlayer.Team == enemyPlayer.Team then
+                                isTeamMate = true
+                            end
+                        elseif localPlayer.TeamColor and enemyPlayer.TeamColor then
+                            if localPlayer.TeamColor == enemyPlayer.TeamColor then
+                                isTeamMate = true
+                            end
                         end
                         
-                        if isEnemy then
+                        if not isTeamMate then
                             mouse1press()
                             task.wait(0.05)
                             mouse1release()
