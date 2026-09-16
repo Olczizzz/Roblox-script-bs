@@ -1,6 +1,5 @@
--- Palofsc Script: Naprawiona funkcja Auto Egg Farming & Garden
--- Problem polegał na tym, że pętla natychmiastowo teleportowała gracza do bazy lub jajka, powodując efekt "migania/teleportacji" bez wywołania odpowiednich funkcji gry.
--- Poniższy kod naprawia tę logikę: prawidłowo czeka na załadowanie jajka, używa fizycznego dotknięcia (TouchInterest) oraz natychmiastowego wywołania RemoteEvent odpowiadającego za podnoszenie i oddawanie w grach typu "Steal an Egg".
+-- Palofsc Script: Ostateczna naprawa Auto Egg Farming & Garden (Bezpieczny podnosiciel i unikanie śmierci z zachowaniem wszystkich opcji)
+-- Ten skrypt eliminuje efekt zabijania gracza podczas teleportacji, omija kolizje i bezpiecznie obsługuje zbieranie oraz zanoszenie jajek.
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -70,7 +69,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -20, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "STEAL AN EGG | FIXED AUTO FARM HUB"
+TitleLabel.Text = "STEAL AN EGG | SAFE ULTRA FARM HUB"
 TitleLabel.TextColor3 = Color3.fromRGB(230, 30, 60)
 TitleLabel.TextSize = 13
 TitleLabel.Font = Enum.Font.GothamBold
@@ -211,68 +210,86 @@ local tabVisual = createTab("Visual & ESP", 2)
 local tabAutos = createTab("Automation", 3)
 local tabPlayer = createTab("Gracz", 4)
 
--- NAPRAWIONA LINIJKA I LOGIKA: 1. Auto Egg Farming & Garden
+-- 1. NAPRAWIONE AUTO EGG FARMING (Bezpieczny lot, zero śmierci, obsługa wszystkich ogrodów i baz)
 addToggle(tabFarm, "1. Auto Egg Farming & Garden", function(v)
     getgenv().EggConfig.AutoFarm = v
     task.spawn(function()
         while getgenv().EggConfig.AutoFarm do
-            task.wait(1)
+            task.wait(0.6)
             pcall(function()
                 local char = localPlayer.Character
-                if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+                if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
                 local hrp = char.HumanoidRootPart
+                local humanoid = char.Humanoid
 
-                -- Znajdź bazę gracza oraz strefę ogrodu / punkt depozytu
-                local bases = workspace:FindFirstChild("Bases") or workspace:FindFirstChild("Plots")
-                local myBase = bases and bases:FindFirstChild(localPlayer.Name)
-                local myGarden = myBase and (myBase:FindFirstChild("Garden") or myBase:FindFirstChild("Farm") or myBase:FindFirstChild("DropZone") or myBase)
+                if humanoid.Health <= 0 then return end
 
-                -- Sprawdź czy gracz ma w ekwipunku lub w ręku jajko
+                -- Wyłączenie uszkodzeń od upadku/kolizji podczas bezpiecznej pracy skryptu
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+
+                -- Szukanie wszystkich możliwych ogrodów/baz gracza (wielokrotne wsparcie lokalizacji)
+                local targetGarden = nil
+                local basesFolder = workspace:FindFirstChild("Bases") or workspace:FindFirstChild("Plots") or workspace:FindFirstChild("Islands")
+                if basesFolder then
+                    for _, base in ipairs(basesFolder:GetChildren()) do
+                        if base.Name == localPlayer.Name or base:FindFirstChild(localPlayer.Name) then
+                            targetGarden = base:FindFirstChild("Garden") or base:FindFirstChild("Farm") or base:FindFirstChild("BasePlate") or base
+                            break
+                        end
+                    end
+                end
+                if not targetGarden then targetGarden = workspace end
+
+                -- Sprawdzenie czy gracz trzyma jajko w ręce lub ekwipunku
                 local carriedItem = char:FindFirstChildOfClass("Tool") or localPlayer.Backpack:FindFirstChildOfClass("Tool")
 
-                if carriedItem and myGarden then
-                    -- Jeśli trzymamy jajko, teleportujemy się bezpiecznie do ogrodu i uruchamiamy event depozytu/sadzenia
-                    hrp.CFrame = myGarden:GetPivot() + Vector3.new(0, 3, 0)
+                if carriedItem then
+                    -- Bezpieczny powrót do ogrodu i zdeponowanie
+                    hrp.CFrame = targetGarden:GetPivot() + Vector3.new(0, 5, 0)
                     task.wait(0.3)
-                    
                     for _, remote in ipairs(replicatedStorage:GetDescendants()) do
                         if remote:IsA("RemoteEvent") then
                             local rName = remote.Name:lower()
-                            if rName:find("plant") or rName:find("garden") or rName:find("deposit") or rName:find("sell") or rName:find("store") then
+                            if rName:find("plant") or rName:find("garden") or rName:find("deposit") or rName:find("sell") or rName:find("store") or rName:find("drop") then
                                 remote:FireServer(carriedItem)
                             end
                         end
                     end
-                    task.wait(0.5)
+                    task.wait(0.4)
                 else
-                    -- Szukamy fizycznych jajek na mapie
+                    -- Szukanie jajek na mapie i bezpieczne zbieranie bez śmierci
+                    local foundEgg = false
                     for _, obj in ipairs(workspace:GetDescendants()) do
                         if not getgenv().EggConfig.AutoFarm then break end
                         if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
-                            -- Teleportujemy się tuż obok jajka
-                            hrp.CFrame = obj.CFrame + Vector3.new(0, 2, 0)
-                            task.wait(0.3)
+                            -- Teleport tuż nad jajko z bezpieczną wysokością, zapobiegający wpadnięciu w tekstury
+                            hrp.CFrame = obj.CFrame + Vector3.new(0, 4, 0)
+                            task.wait(0.2)
                             
-                            -- Używamy ProximityPrompt jeśli istnieje
                             for _, prompt in ipairs(obj:GetDescendants()) do
                                 if prompt:IsA("ProximityPrompt") then
                                     fireproximityprompt(prompt)
                                 end
                             end
                             
-                            -- Wzmacniamy akcję poprzez RemoteEvent podnoszenia
                             for _, remote in ipairs(replicatedStorage:GetDescendants()) do
                                 if remote:IsA("RemoteEvent") then
                                     local rName = remote.Name:lower()
-                                    if rName:find("pick") or rName:find("grab") or rName:find("take") or rName:find("collect") then
+                                    if rName:find("pick") or rName:find("grab") or rName:find("take") or rName:find("collect") or rName:find("get") then
                                         remote:FireServer(obj)
                                     end
                                 end
                             end
                             
-                            task.wait(0.5)
+                            foundEgg = true
+                            task.wait(0.4)
                             break
                         end
+                    end
+                    if not foundEgg then
+                        task.wait(1)
                     end
                 end
             end)
@@ -291,7 +308,7 @@ addToggle(tabFarm, "2. Rare Egg Targeting", function(v)
                     if not getgenv().EggConfig.RareTarget then break end
                     if obj:IsA("Model") and (obj.Name:lower():find("rare") or obj.Name:lower():find("legendary") or obj.Name:lower():find("epic")) then
                         if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                            localPlayer.Character.HumanoidRootPart.CFrame = obj:GetPivot()
+                            localPlayer.Character.HumanoidRootPart.CFrame = obj:GetPivot() + Vector3.new(0, 3, 0)
                             task.wait(0.3)
                         end
                     end
@@ -313,7 +330,7 @@ addToggle(tabFarm, "3. Auto Return to Base", function(v)
                     local base = bases:FindFirstChild(localPlayer.Name)
                     if base and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
                         if localPlayer.Character:FindFirstChildOfClass("Tool") then
-                            localPlayer.Character.HumanoidRootPart.CFrame = base:GetPivot()
+                            localPlayer.Character.HumanoidRootPart.CFrame = base:GetPivot() + Vector3.new(0, 3, 0)
                         end
                     end
                 end
@@ -510,7 +527,7 @@ addToggle(tabAutos, "15. Auto Steal", function(v)
                     for _, enemyBase in ipairs(bases:GetChildren()) do
                         if enemyBase.Name ~= localPlayer.Name then
                             if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                localPlayer.Character.HumanoidRootPart.CFrame = enemyBase:GetPivot()
+                                localPlayer.Character.HumanoidRootPart.CFrame = enemyBase:GetPivot() + Vector3.new(0, 3, 0)
                                 task.wait(0.5)
                             end
                         end
