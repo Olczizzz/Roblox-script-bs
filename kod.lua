@@ -1,7 +1,6 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Całkowicie usunięto obsługę klawiatury / Right Shift)
+-- Palofsc Script: AvalonHub dla Blox Strike (Brak skrótów klawiszowych, przyciski Minimize/Close)
 
 local coreGui = game:GetService("CoreGui")
-local userInputService = game:GetService("UserInputService")
 local httpService = game:GetService("HttpService")
 local players = game:GetService("Players")
 local localPlayer = players.LocalPlayer
