@@ -1,4 +1,4 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Brak skrótów klawiszowych, przyciski Minimize/Close)
+-- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony Triggerbot - strzela do wszystkich, bez binda shifta, z przyciskami okna)
 
 local coreGui = game:GetService("CoreGui")
 local httpService = game:GetService("HttpService")
@@ -152,7 +152,7 @@ TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TopBar
 
 -----------------------------------------------------------------
--- PRZYCISKI STERUJĄCE OKNEM W PRAWYM GÓRNYM ROGU (MINIMALIZACJA I ZAMKNIĘCIE)
+-- PRZYCISKI STERUJĄCE OKNEM W PRAWYM GÓRNYM ROGU
 -----------------------------------------------------------------
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 25, 0, 25)
@@ -207,7 +207,6 @@ RestoreStroke.Color = Color3.fromRGB(200, 20, 40)
 RestoreStroke.Thickness = 1.5
 RestoreStroke.Parent = RestoreBtn
 
--- Obsługa przycisków sterowania oknem
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
@@ -426,24 +425,18 @@ addToggle(tabTriggerbot, "Triggerbot", function(state)
             pcall(function()
                 local mouseTarget = localPlayer:GetMouse().Target
                 if mouseTarget and mouseTarget.Parent then
-                    local enemyPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent)
-                    if enemyPlayer and enemyPlayer ~= localPlayer then
-                        local isTeamMate = false
-                        if localPlayer.Team and enemyPlayer.Team then
-                            if localPlayer.Team == enemyPlayer.Team then
-                                isTeamMate = true
-                            end
-                        elseif localPlayer.TeamColor and enemyPlayer.TeamColor then
-                            if localPlayer.TeamColor == enemyPlayer.TeamColor then
-                                isTeamMate = true
-                            end
+                    local targetPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent)
+                    if not targetPlayer then
+                        -- Sprawdzenie czy cel jest częścią modelu postaći (np. head/torso)
+                        if mouseTarget.Parent.Parent then
+                            targetPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent.Parent)
                         end
-                        
-                        if not isTeamMate then
-                            mouse1press()
-                            task.wait(0.05)
-                            mouse1release()
-                        end
+                    end
+                    
+                    if targetPlayer and targetPlayer ~= localPlayer then
+                        mouse1press()
+                        task.wait(0.05)
+                        mouse1release()
                     end
                 end
             end)
