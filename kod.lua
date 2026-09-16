@@ -1,4 +1,4 @@
--- Palofsc Script: AvalonHub dla Blox Strike zintegrowany z Twoim Work.ink Key System
+-- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony system weryfikacji Work.ink)
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -14,7 +14,7 @@ end
 getgenv().AvalonConfig = {
     Wallhack = false,
     AntiAFK = false,
-    WorkApiKey = "65ef8309-289b-42ef-85ea-566f3cbf5b31" -- Twój klucz API Work.ink
+    WorkApiKey = "65ef8309-289b-42ef-85ea-566f3cbf5b31"
 }
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -56,7 +56,7 @@ KeyInput.Size = UDim2.new(0.85, 0, 0, 38)
 KeyInput.Position = UDim2.new(0.075, 0, 0.22, 0)
 KeyInput.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-KeyInput.PlaceholderText = "Wpisz swój klucz (z Manage lub Work.ink)..."
+KeyInput.PlaceholderText = "Wpisz swój klucz..."
 KeyInput.Text = ""
 KeyInput.TextSize = 12
 KeyInput.Font = Enum.Font.Gotham
@@ -99,7 +99,7 @@ DiscordBtn.Size = UDim2.new(0.85, 0, 0, 28)
 DiscordBtn.Position = UDim2.new(0.075, 0, 0.81, 0)
 DiscordBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 DiscordBtn.TextColor3 = Color3.fromRGB(150, 160, 255)
-DiscordBtn.Text = "Discord: discord.gg/TwojLink"
+DiscordBtn.Text = "Discord: discord.gg/BKJepBmwkf"
 DiscordBtn.TextSize = 10
 DiscordBtn.Font = Enum.Font.GothamMedium
 DiscordBtn.Parent = KeyFrame
@@ -257,7 +257,7 @@ local function addToggle(tab, title, callback)
     end)
 end
 
--- WERYFIKACJA KLUCZA PRZEZ API WORK.INK
+-- POPRAWIONA WERYFIKACJA KLUCZA Z OFICJALNYM ENDPOINTEM WORK.INK
 SubmitBtn.MouseButton1Click:Connect(function()
     local enteredKey = KeyInput.Text
     
@@ -267,15 +267,14 @@ SubmitBtn.MouseButton1Click:Connect(function()
     end
     
     local success, response = pcall(function()
-        -- Endpoint weryfikacji tokenu Work.ink z użyciem Twojego klucza API
-        local url = "https://dashboard.work.ink/_api/v1/token/verify?token=" .. httpService:UrlEncode(enteredKey)
+        local url = "https://work.ink/_api/v2/token/isValid/" .. httpService:UrlEncode(enteredKey)
         local res = game:HttpGetAsync(url, true, {
             ["X-Api-Key"] = getgenv().AvalonConfig.WorkApiKey
         })
         return httpService:JSONDecode(res)
     end)
     
-    if success and response and (response.valid == true or response.success == true) then
+    if success and response and response.valid == true then
         KeyFrame:Destroy()
         MainFrame.Visible = true
     else
@@ -284,7 +283,7 @@ SubmitBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- PRZYCISK KOPIUJĄCY TWÓJ LINK WORK.INK
+-- KOPIOWANIE TWOJEGO LINKU WORK.INK DO PRZEGLĄDARKI
 GetKeyBtn.MouseButton1Click:Connect(function()
     pcall(function()
         setclipboard("https://work.ink/2YQZ/key-system")
@@ -294,12 +293,13 @@ GetKeyBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
+-- KOPIOWANIE DISCORDA
 DiscordBtn.MouseButton1Click:Connect(function()
     pcall(function()
-        setclipboard("https://discord.gg/TwojLink")
+        setclipboard("https://discord.gg/BKJepBmwkf")
         DiscordBtn.Text = "Skopiowano Discord do schowka!"
         task.wait(2)
-        DiscordBtn.Text = "Discord: discord.gg/TwojLink"
+        DiscordBtn.Text = "Discord: discord.gg/BKJepBmwkf"
     end)
 end)
 
