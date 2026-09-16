@@ -1,4 +1,4 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony i natychmiastowy Triggerbot + Oryginalny Wallhack/Aimbot)
+-- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony system weryfikacji Work.ink)
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -144,7 +144,7 @@ TopCorner.CornerRadius = UDim.new(0, 6)
 TopCorner.Parent = TopBar
 
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, -90, 1, 0)
+TitleLabel.Size = UDim2.new(1, -20, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = "AvalonHub"
@@ -154,76 +154,15 @@ TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TopBar
 
------------------------------------------------------------------
--- PRZYCISKI STERUJĄCE OKNEM W PRAWYM GÓRNYM ROGU (MINIMALIZACJA I ZAMKNIĘCIE)
------------------------------------------------------------------
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 25, 0, 25)
-CloseBtn.Position = UDim2.new(1, -30, 0, 5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 20, 40)
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Text = "X"
-CloseBtn.TextSize = 11
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Parent = TopBar
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 4)
-CloseCorner.Parent = CloseBtn
-
-local MinimizeBtn = Instance.new("TextButton")
-MinimizeBtn.Size = UDim2.new(0, 25, 0, 25)
-MinimizeBtn.Position = UDim2.new(1, -60, 0, 5)
-MinimizeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeBtn.Text = "-"
-MinimizeBtn.TextSize = 12
-MinimizeBtn.Font = Enum.Font.GothamBold
-MinimizeBtn.Parent = TopBar
-
-local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 4)
-MinCorner.Parent = MinimizeBtn
-
------------------------------------------------------------------
--- PŁYWAJĄCA IKONA OTWIERANIA (PO ZMINIMALIZOWANIU)
------------------------------------------------------------------
-local RestoreBtn = Instance.new("TextButton")
-RestoreBtn.Size = UDim2.new(0, 110, 0, 35)
-RestoreBtn.Position = UDim2.new(0, 15, 0, 15)
-RestoreBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-RestoreBtn.TextColor3 = Color3.fromRGB(220, 30, 50)
-RestoreBtn.Text = "Open AvalonHub"
-RestoreBtn.TextSize = 11
-RestoreBtn.Font = Enum.Font.GothamBold
-RestoreBtn.Visible = false
-RestoreBtn.Active = true
-RestoreBtn.Draggable = true
-RestoreBtn.Parent = ScreenGui
-
-local RestoreCorner = Instance.new("UICorner")
-RestoreCorner.CornerRadius = UDim.new(0, 6)
-RestoreCorner.Parent = RestoreBtn
-
-local RestoreStroke = Instance.new("UIStroke")
-RestoreStroke.Color = Color3.fromRGB(200, 20, 40)
-RestoreStroke.Thickness = 1.5
-RestoreStroke.Parent = RestoreBtn
-
--- Obsługa przycisków sterowania oknem
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
-
-MinimizeBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    RestoreBtn.Visible = true
-end)
-
-RestoreBtn.MouseButton1Click:Connect(function()
-    RestoreBtn.Visible = false
-    MainFrame.Visible = true
-end)
+local HintLabel = Instance.new("TextLabel")
+HintLabel.Size = UDim2.new(1, -20, 1, 0)
+HintLabel.BackgroundTransparency = 1
+HintLabel.Text = "[Right Shift: Ukryj]"
+HintLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
+HintLabel.TextSize = 10
+HintLabel.Font = Enum.Font.Gotham
+HintLabel.TextXAlignment = Enum.TextXAlignment.Right
+HintLabel.Parent = TopBar
 
 local TabContainer = Instance.new("Frame")
 TabContainer.Size = UDim2.new(0, 130, 1, -45)
@@ -517,32 +456,19 @@ addSlider(tabAimbot, "Skuteczność trafień", 1, 100, function(val)
     getgenv().AvalonConfig.HitChance = val
 end)
 
--- Poprawiony Triggerbot reagujący bezpośrednio na najechane postacie z Wallhacka
 addToggle(tabTriggerbot, "Triggerbot", function(state)
     getgenv().AvalonConfig.Triggerbot = state
     task.spawn(function()
         while getgenv().AvalonConfig.Triggerbot do
-            task.wait(0.01)
+            task.wait(0.05)
             pcall(function()
                 local mouseTarget = localPlayer:GetMouse().Target
                 if mouseTarget and mouseTarget.Parent then
-                    local char = mouseTarget.Parent
-                    local player = players:GetPlayerFromCharacter(char)
-                    
-                    -- Jeśli celownik trafił w część modelu lub bezpośrednio w Highlight/ESP postaći wroga
-                    if not player and char.Parent then
-                        player = players:GetPlayerFromCharacter(char.Parent)
-                    end
-                    
-                    if player and player ~= localPlayer then
-                        local isEnemy = true
-                        if localPlayer.Team and player.Team and localPlayer.Team == player.Team then
-                            isEnemy = false
-                        end
-                        
-                        if isEnemy then
+                    local enemyPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent)
+                    if enemyPlayer and enemyPlayer ~= localPlayer then
+                        if not (localPlayer.Team and enemyPlayer.Team and localPlayer.Team == enemyPlayer.Team) then
                             mouse1press()
-                            task.wait(0.03)
+                            task.wait(0.05)
                             mouse1release()
                         end
                     end
@@ -574,4 +500,10 @@ addToggle(tabMisc, "Anti-AFK", function(state)
             end
         end
     end)
+end)
+
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        MainFrame.Visible = not MainFrame.Visible
+    end
 end)
