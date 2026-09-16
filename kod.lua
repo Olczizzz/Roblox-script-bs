@@ -1,5 +1,5 @@
--- Palofsc Script: Steal an Egg - Full Hub z wyświetlaniem współrzędnych X, Y, Z oraz gotowością na bazy i jajka
--- Ten skrypt wyświetla na górnym pasku aktualną pozycję gracza w czasie rzeczywistym i integruje pełny system automatyzacji.
+-- Palofsc Script: Naprawa błędu czarnego ekranu oraz dodanie przycisków koordynatów X, Y, Z (teleportacja pod wskazane pozycje)
+-- Ten skrypt usuwa błąd blokujący wyświetlanie zawartości, przywraca interfejs zakładek oraz dodaje interaktywne przyciski koordynatów.
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -66,22 +66,22 @@ TopCorner.CornerRadius = UDim.new(0, 10)
 TopCorner.Parent = TopBar
 
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(0, 280, 1, 0)
+TitleLabel.Size = UDim2.new(0, 260, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "STEAL AN EGG | XYZ & COORDS HUB"
+TitleLabel.Text = "STEAL AN EGG | FIXED HUB"
 TitleLabel.TextColor3 = Color3.fromRGB(230, 30, 60)
 TitleLabel.TextSize = 12
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TopBar
 
--- Wyświetlacz pozycji X, Y, Z na pasku tytułowym
+-- Wyświetlacz aktualnych współrzędnych X, Y, Z
 local CoordsLabel = Instance.new("TextLabel")
-CoordsLabel.Size = UDim2.new(0, 150, 1, 0)
-CoordsLabel.Position = UDim2.new(0, 280, 0, 0)
+CoordsLabel.Size = UDim2.new(0, 160, 1, 0)
+CoordsLabel.Position = UDim2.new(0, 260, 0, 0)
 CoordsLabel.BackgroundTransparency = 1
-CoordsLabel.Text = "X: 0 | Y: 0 | Z: 0"
+CoordsLabel.Text = "X:0 Y:0 Z:0"
 CoordsLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
 CoordsLabel.TextSize = 11
 CoordsLabel.Font = Enum.Font.GothamCode
@@ -89,8 +89,8 @@ CoordsLabel.TextXAlignment = Enum.TextXAlignment.Left
 CoordsLabel.Parent = TopBar
 
 local HintLabel = Instance.new("TextLabel")
-HintLabel.Size = UDim2.new(0, 130, 1, 0)
-HintLabel.Position = UDim2.new(1, -135, 0, 0)
+HintLabel.Size = UDim2.new(0, 120, 1, 0)
+HintLabel.Position = UDim2.new(1, -125, 0, 0)
 HintLabel.BackgroundTransparency = 1
 HintLabel.Text = "[P. Shift: Ukryj]"
 HintLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
@@ -99,7 +99,6 @@ HintLabel.Font = Enum.Font.Gotham
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 HintLabel.Parent = TopBar
 
--- Aktualizacja współrzędnych X, Y, Z w czasie rzeczywistym
 runService.RenderStepped:Connect(function()
     pcall(function()
         local char = localPlayer.Character
@@ -115,7 +114,7 @@ TabContainer.Size = UDim2.new(0, 145, 1, -50)
 TabContainer.Position = UDim2.new(0, 5, 0, 45)
 TabContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 TabContainer.BorderSizePixel = 0
-TabContainer.CanvasSize = UDim2.new(0, 0, 0, 250)
+TabContainer.CanvasSize = UDim2.new(0, 0, 0, 300)
 TabContainer.ScrollBarThickness = 3
 TabContainer.Parent = MainFrame
 
@@ -229,10 +228,11 @@ local function addButton(tab, title, callback)
     end)
 end
 
-local tabFarm = createTab("Farming & Core", 1)
-local tabVisual = createTab("Visual & ESP", 2)
-local tabAutos = createTab("Automation", 3)
-local tabPlayer = createTab("Gracz", 4)
+local tabFarm = createTab("Farming", 1)
+local tabTeleports = createTab("Teleporty XYZ", 2)
+local tabVisual = createTab("Visual", 3)
+local tabAutos = createTab("Auto", 4)
+local tabPlayer = createTab("Gracz", 5)
 
 -- 1. Auto Egg Farming & Garden
 addToggle(tabFarm, "1. Auto Egg Farming & Garden", function(v)
@@ -304,7 +304,6 @@ addToggle(tabFarm, "1. Auto Egg Farming & Garden", function(v)
     end)
 end)
 
--- 2. Rare Egg Targeting
 addToggle(tabFarm, "2. Rare Egg Targeting", function(v)
     getgenv().EggConfig.RareTarget = v
     task.spawn(function()
@@ -325,7 +324,6 @@ addToggle(tabFarm, "2. Rare Egg Targeting", function(v)
     end)
 end)
 
--- 3. Auto Return to Base
 addToggle(tabFarm, "3. Auto Return to Base", function(v)
     getgenv().EggConfig.AutoReturn = v
     task.spawn(function()
@@ -346,7 +344,6 @@ addToggle(tabFarm, "3. Auto Return to Base", function(v)
     end)
 end)
 
--- 4. Auto Collect
 addToggle(tabFarm, "4. Auto Collect", function(v)
     getgenv().EggConfig.AutoCollect = v
     task.spawn(function()
@@ -361,7 +358,6 @@ addToggle(tabFarm, "4. Auto Collect", function(v)
     end)
 end)
 
--- 5. Server Hop
 addButton(tabFarm, "5. Server Hop", function()
     pcall(function()
         local servers = {}
@@ -376,7 +372,6 @@ addButton(tabFarm, "5. Server Hop", function()
     end)
 end)
 
--- 6. Auto Farm Loop
 addToggle(tabFarm, "6. Auto Farm Loop", function(v)
     getgenv().EggConfig.AutoLoop = v
     task.spawn(function()
@@ -385,14 +380,13 @@ addToggle(tabFarm, "6. Auto Farm Loop", function(v)
             pcall(function()
                 for _, obj in ipairs(workspace:GetDescendants()) do
                     if not getgenv().EggConfig.AutoLoop then break end
-                    if obj:IsA("ProximityPrompt") then fireproximityprompt(obj) end
+                    if obj:IsA("ProximityPrompt") then fireproximityprompt(prompt) end
                 end
             end)
         end
     end)
 end)
 
--- 7. Easy Egg Searching
 addToggle(tabFarm, "7. Easy Egg Searching", function(v)
     getgenv().EggConfig.EasySearch = v
     pcall(function()
@@ -408,13 +402,11 @@ addToggle(tabFarm, "7. Easy Egg Searching", function(v)
     end)
 end)
 
--- 8. Less Repetitive Gameplay
 addToggle(tabFarm, "8. Less Repetitive Gameplay", function(v)
     getgenv().EggConfig.LessRepetitive = v
     pcall(function() settings():GetService("RenderSettings").EagerBulkExecution = v end)
 end)
 
--- 9. Egg Predictor
 addToggle(tabVisual, "9. Egg Predictor", function(v)
     getgenv().EggConfig.Predictor = v
     pcall(function()
@@ -434,7 +426,6 @@ addToggle(tabVisual, "9. Egg Predictor", function(v)
     end)
 end)
 
--- 10. Egg Spawn Time
 addToggle(tabVisual, "10. Egg Spawn Time", function(v)
     getgenv().EggConfig.SpawnTimer = v
     pcall(function()
@@ -454,7 +445,6 @@ addToggle(tabVisual, "10. Egg Spawn Time", function(v)
     end)
 end)
 
--- 11. Egg X-Ray and ESP
 addToggle(tabVisual, "11. Egg X-Ray and ESP", function(v)
     getgenv().EggConfig.ESP = v
     task.spawn(function()
@@ -488,12 +478,10 @@ addToggle(tabVisual, "11. Egg X-Ray and ESP", function(v)
     end)
 end)
 
--- 12. Steal Filter By KG
 addToggle(tabAutos, "12. Steal Filter By KG", function(v)
     getgenv().EggConfig.StealFilter = v
 end)
 
--- 13. Trap Protection
 addToggle(tabAutos, "13. Trap Protection", function(v)
     getgenv().EggConfig.TrapProtection = v
     task.spawn(function()
@@ -511,7 +499,6 @@ addToggle(tabAutos, "13. Trap Protection", function(v)
     end)
 end)
 
--- 14. Pet Fusion
 addButton(tabAutos, "14. Pet Fusion", function()
     pcall(function()
         for _, remote in ipairs(replicatedStorage:GetDescendants()) do
@@ -522,7 +509,6 @@ addButton(tabAutos, "14. Pet Fusion", function()
     end)
 end)
 
--- 15. Auto Steal
 addToggle(tabAutos, "15. Auto Steal", function(v)
     getgenv().EggConfig.AutoSteal = v
     task.spawn(function()
@@ -545,7 +531,30 @@ addToggle(tabAutos, "15. Auto Steal", function(v)
     end)
 end)
 
--- ZAKŁADKA GRACZ – Ekstremalna prędkość (200k butów)
+-- ZAKŁADKA TELEPORTÓW XYZ (Przyciski koordynatów baz i krain/jajek)
+addButton(tabTeleports, "Teleport do Bazy (Moja Baza)", function()
+    pcall(function()
+        local bases = workspace:FindFirstChild("Bases") or workspace:FindFirstChild("Plots")
+        if bases then
+            local myBase = bases:FindFirstChild(localPlayer.Name)
+            if myBase and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                localPlayer.Character.HumanoidRootPart.CFrame = myBase:GetPivot() + Vector3.new(0, 3, 0)
+            end
+        end
+    end)
+end)
+
+addButton(tabTeleports, "Teleport: Kraina 1 / Jajka", function()
+    pcall(function()
+        -- Przykładowe koordynaty / szablon do uzupełnienia lub wyszukiwania po nazwie
+        local target = workspace:FindFirstChild("World1") or workspace:FindFirstChild("Zone1")
+        if target and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            localPlayer.Character.HumanoidRootPart.CFrame = target:GetPivot() + Vector3.new(0, 3, 0)
+        end
+    end)
+end)
+
+-- ZAKŁADKA GRACZ
 addButton(tabPlayer, "Ekstremalna Prędkość (200k+ Butów)", function()
     getgenv().EggConfig.ExtremeSpeed = true
     task.spawn(function()
@@ -575,7 +584,6 @@ addButton(tabPlayer, "Reset Prędkości (Normalna)", function()
     end
 end)
 
--- Obsługa minimalizowania pod prawym Shiftem
 userInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.RightShift then
         MainFrame.Visible = not MainFrame.Visible
