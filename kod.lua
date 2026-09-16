@@ -1,11 +1,9 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony Aimbot + Przycisk Anti-AFK)
--- Skrypt integruje płynne celowanie (Aimbot) bezpośrednio na graczy drużyny przeciwnej oraz system Anti-AFK.
+-- Palofsc Script: AvalonHub dla Blox Strike (Usunięty Aimbot + System Klucza i Discord)
+-- Skrypt uruchamia najpierw okienko weryfikacji klucza z linkiem do Discorda, a po poprawnej weryfikacji otwiera główne menu.
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
-local runService = game:GetService("RunService")
 local players = game:GetService("Players")
-local virtualUser = game:GetService("VirtualUser")
 local localPlayer = players.LocalPlayer
 local camera = workspace.CurrentCamera
 
@@ -15,9 +13,8 @@ end
 
 getgenv().AvalonConfig = {
     Wallhack = false,
-    Aimbot = false,
     AntiAFK = false,
-    HitChance = 100
+    CorrectKey = "AVALON2026" -- Twój wygenerowany klucz
 }
 
 -- Główny kontener GUI
@@ -25,14 +22,90 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AvalonHubBloxStrike"
 ScreenGui.Parent = coreGui
 
--- Okno główne
+-----------------------------------------------------------------
+-- 1. OKNO SYSTEMU KLUCZY (KEY SYSTEM & DISCORD)
+-----------------------------------------------------------------
+local KeyFrame = Instance.new("Frame")
+KeyFrame.Size = UDim2.new(0, 400, 0, 240)
+KeyFrame.Position = UDim2.new(0.5, -200, 0.5, -120)
+KeyFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+KeyFrame.BorderSizePixel = 0
+KeyFrame.Active = true
+KeyFrame.Draggable = true
+KeyFrame.Parent = ScreenGui
+
+local KeyCorner = Instance.new("UICorner")
+KeyCorner.CornerRadius = UDim.new(0, 6)
+KeyCorner.Parent = KeyFrame
+
+local KeyStroke = Instance.new("UIStroke")
+KeyStroke.Color = Color3.fromRGB(200, 20, 40)
+KeyStroke.Thickness = 1.5
+KeyStroke.Parent = KeyFrame
+
+local KeyTitle = Instance.new("TextLabel")
+KeyTitle.Size = UDim2.new(1, 0, 0, 40)
+KeyTitle.BackgroundTransparency = 1
+KeyTitle.Text = "AVALON HUB - WERYFIKACJA KLUCZA"
+KeyTitle.TextColor3 = Color3.fromRGB(220, 30, 50)
+KeyTitle.TextSize = 13
+KeyTitle.Font = Enum.Font.GothamBold
+KeyTitle.Parent = KeyFrame
+
+local KeyInput = Instance.new("TextBox")
+KeyInput.Size = UDim2.new(0.85, 0, 0, 38)
+KeyInput.Position = UDim2.new(0.075, 0, 0.3, 0)
+KeyInput.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyInput.PlaceholderText = "Wpisz swój klucz tutaj..."
+KeyInput.Text = ""
+KeyInput.TextSize = 12
+KeyInput.Font = Enum.Font.Gotham
+KeyInput.Parent = KeyFrame
+
+local InputCorner = Instance.new("UICorner")
+InputCorner.CornerRadius = UDim.new(0, 4)
+InputCorner.Parent = KeyInput
+
+local SubmitBtn = Instance.new("TextButton")
+SubmitBtn.Size = UDim2.new(0.85, 0, 0, 38)
+SubmitBtn.Position = UDim2.new(0.075, 0, 0.53, 0)
+SubmitBtn.BackgroundColor3 = Color3.fromRGB(180, 20, 40)
+SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubmitBtn.Text = "ZATWIERDŹ KLUCZ"
+SubmitBtn.TextSize = 12
+SubmitBtn.Font = Enum.Font.GothamBold
+SubmitBtn.Parent = KeyFrame
+
+local BtnCorner = Instance.new("UICorner")
+BtnCorner.CornerRadius = UDim.new(0, 4)
+BtnCorner.Parent = SubmitBtn
+
+local DiscordBtn = Instance.new("TextButton")
+DiscordBtn.Size = UDim2.new(0.85, 0, 0, 32)
+DiscordBtn.Position = UDim2.new(0.075, 0, 0.76, 0)
+DiscordBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+DiscordBtn.TextColor3 = Color3.fromRGB(150, 160, 255)
+DiscordBtn.Text = "Discord: discord.gg/TwojLink"
+DiscordBtn.TextSize = 11
+DiscordBtn.Font = Enum.Font.GothamMedium
+DiscordBtn.Parent = KeyFrame
+
+local DiscCorner = Instance.new("UICorner")
+DiscCorner.CornerRadius = UDim.new(0, 4)
+DiscCorner.Parent = DiscordBtn
+
+-----------------------------------------------------------------
+-- 2. GŁÓWNE OKNO HUBA (UKRYTE DO MOMENTU POPRAWNEGO KLUCZA)
+-----------------------------------------------------------------
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 480, 0, 340)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -170)
+MainFrame.Size = UDim2.new(0, 480, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -150)
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.Visible = false -- Ukryte na start
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -44,7 +117,6 @@ MainStroke.Color = Color3.fromRGB(200, 20, 40)
 MainStroke.Thickness = 1.5
 MainStroke.Parent = MainFrame
 
--- Pasek górny
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 35)
 TopBar.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
@@ -89,7 +161,6 @@ TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 TabListLayout.Padding = UDim.new(0, 5)
 TabListLayout.Parent = TabContainer
 
--- Kontener na zawartość zakładek
 local ContentContainer = Instance.new("Frame")
 ContentContainer.Size = UDim2.new(1, -145, 1, -45)
 ContentContainer.Position = UDim2.new(0, 140, 0, 40)
@@ -174,77 +245,30 @@ local function addToggle(tab, title, callback)
     end)
 end
 
-local function addSlider(tab, title, min, max, callback)
-    local sliderFrame = Instance.new("Frame")
-    sliderFrame.Size = UDim2.new(1, -5, 0, 50)
-    sliderFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-    sliderFrame.BorderSizePixel = 0
-    sliderFrame.Parent = tab
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = sliderFrame
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 0, 20)
-    label.Position = UDim2.new(0, 5, 0, 4)
-    label.BackgroundTransparency = 1
-    label.Text = title .. ": " .. getgenv().AvalonConfig.HitChance .. "%"
-    label.TextColor3 = Color3.fromRGB(210, 210, 210)
-    label.TextSize = 11
-    label.Font = Enum.Font.Gotham
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = sliderFrame
-    
-    local sliderBar = Instance.new("TextButton")
-    sliderBar.Size = UDim2.new(1, -20, 0, 8)
-    sliderBar.Position = UDim2.new(0, 10, 0, 30)
-    sliderBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    sliderBar.Text = ""
-    sliderBar.AutoButtonColor = false
-    sliderBar.Parent = sliderFrame
-    
-    local barCorner = Instance.new("UICorner")
-    barCorner.CornerRadius = UDim.new(0, 4)
-    barCorner.Parent = sliderBar
-    
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(getgenv().AvalonConfig.HitChance / max, 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(200, 20, 40)
-    fill.BorderSizePixel = 0
-    fill.Parent = sliderBar
-    
-    local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(0, 4)
-    fillCorner.Parent = fill
-    
-    local dragging = false
-    sliderBar.MouseButton1Down:Connect(function() dragging = true end)
-    userInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-    end)
-    
-    userInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local pos = userInputService:GetMouseLocation()
-            local absPos = sliderBar.AbsolutePosition
-            local absSize = sliderBar.AbsoluteSize
-            local percent = math.clamp((pos.X - absPos.X) / absSize.X, 0, 1)
-            local val = math.floor(min + (max - min) * percent)
-            
-            fill.Size = UDim2.new(percent, 0, 1, 0)
-            label.Text = title .. ": " + val + "%"
-            label.Text = title .. ": " .. val .. "%"
-            getgenv().AvalonConfig.HitChance = val
-            pcall(function() callback(val) end)
-        end
-    end)
-end
+-- Obsługa weryfikacji klucza
+SubmitBtn.MouseButton1Click:Connect(function()
+    if KeyInput.Text == getgenv().AvalonConfig.CorrectKey then
+        KeyFrame:Destroy() -- Usuwamy okno klucza
+        MainFrame.Visible = true -- Pokazujemy główne menu AvalonHub
+    else
+        KeyInput.Text = ""
+        KeyInput.PlaceholderText = "Błędny klucz! Spróbuj ponownie."
+    end
+end)
 
--- Zakładki
+-- Przycisk Discord (Kopiowanie linku do schowka, jeśli executor wspiera setclipboard)
+DiscordBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        setclipboard("https://discord.gg/TwojLink")
+        DiscordBtn.Text = "Skopiowano link do schowka!"
+        task.wait(2)
+        DiscordBtn.Text = "Discord: discord.gg/TwojLink"
+    end)
+end)
+
+-- Tworzenie zakładek w głównym menu (Wallhack oraz Misc/Anti-AFK)
 local tabWallhack = createTab("Wallhack", 1)
-local tabAimbot = createTab("Aimbot", 2)
-local tabMisc = createTab("Misc / AFK", 3)
+local tabMisc = createTab("Misc / AFK", 2)
 
 -- 1. Wallhack (ESP)
 addToggle(tabWallhack, "Wallhack (ESP)", function(state)
@@ -281,57 +305,11 @@ addToggle(tabWallhack, "Wallhack (ESP)", function(state)
     end)
 end)
 
--- 2. Naprawiony Aimbot (Namierza celownik na najbliższego przeciwnika w polu widzenia)
-addToggle(tabAimbot, "Aimbot", function(state)
-    getgenv().AvalonConfig.Aimbot = state
-    task.spawn(function()
-        while getgenv().AvalonConfig.Aimbot do
-            task.wait()
-            pcall(function()
-                local closestTarget = nil
-                local shortestDist = math.huge
-                
-                for _, p in ipairs(players:GetPlayers()) do
-                    if p ~= localPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") then
-                        if p.Character.Humanoid.Health > 0 then
-                            -- Sprawdzenie drużyny (jeśli gra posiada właściwość Team)
-                            local isEnemy = true
-                            if localPlayer.Team and p.Team and localPlayer.Team == p.Team then
-                                isEnemy = false
-                            end
-                            
-                            if isEnemy then
-                                local head = p.Character.Head
-                                local pos, onScreen = camera:WorldToViewportPoint(head.Position)
-                                if onScreen then
-                                    local mousePos = userInputService:GetMouseLocation()
-                                    local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-                                    if dist < shortestDist then
-                                        shortestDist = dist
-                                        closestTarget = head
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-                
-                if closestTarget and math.random(1, 100) <= getgenv().AvalonConfig.HitChance then
-                    camera.CFrame = CFrame.new(camera.CFrame.Position, closestTarget.Position)
-                end
-            end)
-        end
-    end)
-end)
-
-addSlider(tabAimbot, "Skuteczność trafień", 1, 100, function(val)
-    getgenv().AvalonConfig.HitChance = val
-end)
-
--- 3. Anti-AFK (Zakładka Misc)
+-- 2. Anti-AFK
 addToggle(tabMisc, "Anti-AFK", function(state)
     getgenv().AvalonConfig.AntiAFK = state
     task.spawn(function()
+        local virtualUser = game:GetService("VirtualUser")
         local connection
         if getgenv().AvalonConfig.AntiAFK then
             connection = localPlayer.Idled:Connect(function()
@@ -352,9 +330,13 @@ addToggle(tabMisc, "Anti-AFK", function(state)
     end)
 end)
 
--- Ukrywanie / pokazywanie okna pod prawym Shiftem
+-- Ukrywanie / pokazywanie głównego okna pod prawym Shiftem
 userInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.RightShift then
-        MainFrame.Visible = not MainFrame.Visible
+        if MainFrame.Visible then
+            MainFrame.Visible = false
+        else
+            MainFrame.Visible = true
+        end
     end
 end)
