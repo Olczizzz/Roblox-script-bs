@@ -1,10 +1,11 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony Triggerbot - strzela do wszystkich, bez binda shifta, z przyciskami okna)
+-- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony i natychmiastowy Triggerbot + Czerwony Wallhack)
 
 local coreGui = game:GetService("CoreGui")
 local httpService = game:GetService("HttpService")
 local players = game:GetService("Players")
 local localPlayer = players.LocalPlayer
 local camera = workspace.CurrentCamera
+local mouse = localPlayer:GetMouse()
 
 if coreGui:FindFirstChild("AvalonHubBloxStrike") then
     coreGui.AvalonHubBloxStrike:Destroy()
@@ -382,23 +383,8 @@ addToggle(tabWallhack, "Wallhack (ESP)", function(state)
                             highlight.Parent = p.Character
                         end
                         
-                        local isTeamMate = false
-                        if localPlayer.Team and p.Team then
-                            if localPlayer.Team == p.Team then
-                                isTeamMate = true
-                            end
-                        elseif localPlayer.TeamColor and p.TeamColor then
-                            if localPlayer.TeamColor == p.TeamColor then
-                                isTeamMate = true
-                            end
-                        end
-                        
-                        if isTeamMate then
-                            highlight.FillColor = Color3.fromRGB(0, 255, 0)
-                        else
-                            highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                        end
-                        
+                        -- Wszyscy gracze podświetleni na jednolity czerwony kolor
+                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
                         highlight.Enabled = getgenv().AvalonConfig.Wallhack
                     end
                 end
@@ -421,22 +407,25 @@ addToggle(tabTriggerbot, "Triggerbot", function(state)
     getgenv().AvalonConfig.Triggerbot = state
     task.spawn(function()
         while getgenv().AvalonConfig.Triggerbot do
-            task.wait(0.05)
+            task.wait()
             pcall(function()
-                local mouseTarget = localPlayer:GetMouse().Target
-                if mouseTarget and mouseTarget.Parent then
-                    local targetPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent)
-                    if not targetPlayer then
-                        -- Sprawdzenie czy cel jest częścią modelu postaći (np. head/torso)
-                        if mouseTarget.Parent.Parent then
-                            targetPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent.Parent)
-                        end
+                local target = mouse.Target
+                if target and target.Parent then
+                    local character = target.Parent
+                    local humanoid = character:FindFirstChildOfClass("Humanoid")
+                    
+                    if not humanoid and character.Parent then
+                        character = character.Parent
+                        humanoid = character:FindFirstChildOfClass("Humanoid")
                     end
                     
-                    if targetPlayer and targetPlayer ~= localPlayer then
-                        mouse1press()
-                        task.wait(0.05)
-                        mouse1release()
+                    if humanoid and humanoid.Health > 0 then
+                        local player = players:GetPlayerFromCharacter(character)
+                        if player and player ~= localPlayer then
+                            mouse1press()
+                            task.wait(0.05)
+                            mouse1release()
+                        end
                     end
                 end
             end)
