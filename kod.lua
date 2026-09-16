@@ -1,4 +1,4 @@
--- Palofsc Script: AvalonHub dla Blox Strike z wbudowanym API Work.ink
+-- Palofsc Script: AvalonHub dla Blox Strike zintegrowany z Twoim Work.ink Key System
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -14,8 +14,7 @@ end
 getgenv().AvalonConfig = {
     Wallhack = false,
     AntiAFK = false,
-    CustomPaidKey = "AVALON-VIP-KUPIONY-123", -- Twój ręczny klucz VIP (opcjonalnie)
-    WorkApiKey = "65ef8309-289b-42ef-85ea-566f3cbf5b31"
+    WorkApiKey = "65ef8309-289b-42ef-85ea-566f3cbf5b31" -- Twój klucz API Work.ink
 }
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -46,7 +45,7 @@ KeyStroke.Parent = KeyFrame
 local KeyTitle = Instance.new("TextLabel")
 KeyTitle.Size = UDim2.new(1, 0, 0, 40)
 KeyTitle.BackgroundTransparency = 1
-KeyTitle.Text = "AVALON HUB - KLUCZE WORK.INK (12H)"
+KeyTitle.Text = "AVALON HUB - WORK.INK KEY SYSTEM"
 KeyTitle.TextColor3 = Color3.fromRGB(220, 30, 50)
 KeyTitle.TextSize = 13
 KeyTitle.Font = Enum.Font.GothamBold
@@ -57,7 +56,7 @@ KeyInput.Size = UDim2.new(0.85, 0, 0, 38)
 KeyInput.Position = UDim2.new(0.075, 0, 0.22, 0)
 KeyInput.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-KeyInput.PlaceholderText = "Wpisz wygenerowany klucz..."
+KeyInput.PlaceholderText = "Wpisz swój klucz (z Manage lub Work.ink)..."
 KeyInput.Text = ""
 KeyInput.TextSize = 12
 KeyInput.Font = Enum.Font.Gotham
@@ -86,7 +85,7 @@ GetKeyBtn.Size = UDim2.new(0.85, 0, 0, 32)
 GetKeyBtn.Position = UDim2.new(0.075, 0, 0.63, 0)
 GetKeyBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 GetKeyBtn.TextColor3 = Color3.fromRGB(255, 170, 50)
-GetKeyBtn.Text = "Generuj / Pobierz darmowy klucz"
+GetKeyBtn.Text = "Pobierz darmowy klucz (Work.ink)"
 GetKeyBtn.TextSize = 11
 GetKeyBtn.Font = Enum.Font.GothamMedium
 GetKeyBtn.Parent = KeyFrame
@@ -100,7 +99,7 @@ DiscordBtn.Size = UDim2.new(0.85, 0, 0, 28)
 DiscordBtn.Position = UDim2.new(0.075, 0, 0.81, 0)
 DiscordBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 DiscordBtn.TextColor3 = Color3.fromRGB(150, 160, 255)
-DiscordBtn.Text = "Kup klucz VIP / Discord"
+DiscordBtn.Text = "Discord: discord.gg/TwojLink"
 DiscordBtn.TextSize = 10
 DiscordBtn.Font = Enum.Font.GothamMedium
 DiscordBtn.Parent = KeyFrame
@@ -258,19 +257,22 @@ local function addToggle(tab, title, callback)
     end)
 end
 
--- WERYFIKACJA KLUCZA
+-- WERYFIKACJA KLUCZA PRZEZ API WORK.INK
 SubmitBtn.MouseButton1Click:Connect(function()
     local enteredKey = KeyInput.Text
     
-    if enteredKey == getgenv().AvalonConfig.CustomPaidKey then
-        KeyFrame:Destroy()
-        MainFrame.Visible = true
+    if enteredKey == "" then
+        KeyInput.PlaceholderText = "Najpierw wpisz klucz!"
         return
     end
     
     local success, response = pcall(function()
-        local url = "https://work.ink/api/v2/token/verify/" .. httpService:UrlEncode(enteredKey)
-        return httpService:JSONDecode(game:HttpGet(url))
+        -- Endpoint weryfikacji tokenu Work.ink z użyciem Twojego klucza API
+        local url = "https://dashboard.work.ink/_api/v1/token/verify?token=" .. httpService:UrlEncode(enteredKey)
+        local res = game:HttpGetAsync(url, true, {
+            ["X-Api-Key"] = getgenv().AvalonConfig.WorkApiKey
+        })
+        return httpService:JSONDecode(res)
     end)
     
     if success and response and (response.valid == true or response.success == true) then
@@ -282,41 +284,13 @@ SubmitBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- AUTOMATYCZNE TWORZENIE LINKU PRZEZ API WORK.INK PO KLIKNIĘCIU
+-- PRZYCISK KOPIUJĄCY TWÓJ LINK WORK.INK
 GetKeyBtn.MouseButton1Click:Connect(function()
-    GetKeyBtn.Text = "Generowanie linku..."
-    
-    task.spawn(function()
-        local success, result = pcall(function()
-            local requestData = httpService:JSONEncode({
-                title = "AvalonHub Key System",
-                destination = "https://discord.gg/TwojLink", -- Zmień na link docelowy po przejściu reklam
-                link_description = "Wygeneruj swój darmowy klucz na 12h"
-            })
-            
-            local response = httpService:PostAsync(
-                "https://dashboard.work.ink/_api/v1/link",
-                requestData,
-                Enum.HttpContentType.ApplicationJson,
-                false,
-                {
-                    ["X-Api-Key"] = getgenv().AvalonConfig.WorkApiKey
-                }
-            )
-            
-            return httpService:JSONDecode(response)
-        end)
-        
-        if success and result and result.url then
-            setclipboard(result.url)
-            GetKeyBtn.Text = "Skopiowano link do schowka!"
-            task.wait(3)
-            GetKeyBtn.Text = "Generuj / Pobierz darmowy klucz"
-        else
-            GetKeyBtn.Text = "Błąd generowania linku!"
-            task.wait(3)
-            GetKeyBtn.Text = "Generuj / Pobierz darmowy klucz"
-        end
+    pcall(function()
+        setclipboard("https://work.ink/2YQZ/key-system")
+        GetKeyBtn.Text = "Skopiowano link do schowka!"
+        task.wait(2)
+        GetKeyBtn.Text = "Pobierz darmowy klucz (Work.ink)"
     end)
 end)
 
@@ -325,7 +299,7 @@ DiscordBtn.MouseButton1Click:Connect(function()
         setclipboard("https://discord.gg/TwojLink")
         DiscordBtn.Text = "Skopiowano Discord do schowka!"
         task.wait(2)
-        DiscordBtn.Text = "Kup klucz VIP / Discord"
+        DiscordBtn.Text = "Discord: discord.gg/TwojLink"
     end)
 end)
 
