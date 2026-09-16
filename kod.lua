@@ -1,4 +1,4 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Usunięty Right Shift, dodane przyciski Minimize [-], Close [X] i Restore)
+-- Palofsc Script: AvalonHub dla Blox Strike (Całkowicie usunięto obsługę klawiatury / Right Shift)
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -208,20 +208,17 @@ RestoreStroke.Color = Color3.fromRGB(200, 20, 40)
 RestoreStroke.Thickness = 1.5
 RestoreStroke.Parent = RestoreBtn
 
--- Obsługa przycisków
+-- Obsługa przycisków sterowania oknem
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
-local isMinimized = false
 MinimizeBtn.MouseButton1Click:Connect(function()
-    isMinimized = true
     MainFrame.Visible = false
     RestoreBtn.Visible = true
 end)
 
 RestoreBtn.MouseButton1Click:Connect(function()
-    isMinimized = false
     RestoreBtn.Visible = false
     MainFrame.Visible = true
 end)
