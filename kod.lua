@@ -1,4 +1,4 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Usunięty Aimbot, Zablokowany Right Shift do weryfikacji, Poprawione kolory)
+-- Palofsc Script: AvalonHub dla Blox Strike (Usunięty Right Shift, dodane przyciski Minimize [-], Close [X] i Restore)
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -15,7 +15,6 @@ getgenv().AvalonConfig = {
     Wallhack = false,
     AntiAFK = false,
     Triggerbot = false,
-    IsKeyVerified = false, -- Flaga blokująca Right Shift do momentu pomyślnej weryfikacji
     WorkApiKey = "65ef8309-289b-42ef-85ea-566f3cbf5b31"
 }
 
@@ -143,7 +142,7 @@ TopCorner.CornerRadius = UDim.new(0, 6)
 TopCorner.Parent = TopBar
 
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, -20, 1, 0)
+TitleLabel.Size = UDim2.new(1, -90, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = "AvalonHub"
@@ -153,15 +152,79 @@ TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TopBar
 
-local HintLabel = Instance.new("TextLabel")
-HintLabel.Size = UDim2.new(1, -20, 1, 0)
-HintLabel.BackgroundTransparency = 1
-HintLabel.Text = "[Right Shift: Ukryj]"
-HintLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
-HintLabel.TextSize = 10
-HintLabel.Font = Enum.Font.Gotham
-HintLabel.TextXAlignment = Enum.TextXAlignment.Right
-HintLabel.Parent = TopBar
+-----------------------------------------------------------------
+-- PRZYCISKI STERUJĄCE OKNEM W PRAWYM GÓRNYM ROGU (MINIMALIZACJA I ZAMKNIĘCIE)
+-----------------------------------------------------------------
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Position = UDim2.new(1, -30, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 20, 40)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Text = "X"
+CloseBtn.TextSize = 11
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Parent = TopBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 4)
+CloseCorner.Parent = CloseBtn
+
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 25, 0, 25)
+MinimizeBtn.Position = UDim2.new(1, -60, 0, 5)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextSize = 12
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.Parent = TopBar
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 4)
+MinCorner.Parent = MinimizeBtn
+
+-----------------------------------------------------------------
+-- PŁYWAJĄCA IKONA OTWIERANIA (PO ZMINIMALIZOWANIU)
+-----------------------------------------------------------------
+local RestoreBtn = Instance.new("TextButton")
+RestoreBtn.Size = UDim2.new(0, 110, 0, 35)
+RestoreBtn.Position = UDim2.new(0, 15, 0, 15)
+RestoreBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+RestoreBtn.TextColor3 = Color3.fromRGB(220, 30, 50)
+RestoreBtn.Text = "Open AvalonHub"
+RestoreBtn.TextSize = 11
+RestoreBtn.Font = Enum.Font.GothamBold
+RestoreBtn.Visible = false
+RestoreBtn.Active = true
+RestoreBtn.Draggable = true
+RestoreBtn.Parent = ScreenGui
+
+local RestoreCorner = Instance.new("UICorner")
+RestoreCorner.CornerRadius = UDim.new(0, 6)
+RestoreCorner.Parent = RestoreBtn
+
+local RestoreStroke = Instance.new("UIStroke")
+RestoreStroke.Color = Color3.fromRGB(200, 20, 40)
+RestoreStroke.Thickness = 1.5
+RestoreStroke.Parent = RestoreBtn
+
+-- Obsługa przycisków
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+local isMinimized = false
+MinimizeBtn.MouseButton1Click:Connect(function()
+    isMinimized = true
+    MainFrame.Visible = false
+    RestoreBtn.Visible = true
+end)
+
+RestoreBtn.MouseButton1Click:Connect(function()
+    isMinimized = false
+    RestoreBtn.Visible = false
+    MainFrame.Visible = true
+end)
 
 local TabContainer = Instance.new("Frame")
 TabContainer.Size = UDim2.new(0, 130, 1, -45)
@@ -259,7 +322,7 @@ local function addToggle(tab, title, callback)
     end)
 end
 
--- WERYFIKACJA KLUCZA WORK.INK (Odblokowuje Right Shift i główne menu)
+-- WERYFIKACJA KLUCZA WORK.INK
 SubmitBtn.MouseButton1Click:Connect(function()
     local enteredKey = KeyInput.Text
     
@@ -277,7 +340,6 @@ SubmitBtn.MouseButton1Click:Connect(function()
     end)
     
     if success and response and response.valid == true then
-        getgenv().AvalonConfig.IsKeyVerified = true -- Odblokowanie działania prawego Shifta
         KeyFrame:Destroy()
         MainFrame.Visible = true
     else
@@ -304,7 +366,7 @@ DiscordBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Tworzenie zakładek (Bez Aimbota)
+-- Zakładki
 local tabWallhack = createTab("Wallhack", 1)
 local tabTriggerbot = createTab("Triggerbot", 2)
 local tabMisc = createTab("Misc / AFK", 3)
@@ -325,7 +387,6 @@ addToggle(tabWallhack, "Wallhack (ESP)", function(state)
                             highlight.Parent = p.Character
                         end
                         
-                        -- Poprawione sprawdzanie drużyny: zielony dla swoich, czerwony dla wrogów
                         local isTeamMate = false
                         if localPlayer.Team and p.Team then
                             if localPlayer.Team == p.Team then
@@ -338,9 +399,9 @@ addToggle(tabWallhack, "Wallhack (ESP)", function(state)
                         end
                         
                         if isTeamMate then
-                            highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Zielony dla teammate'a
+                            highlight.FillColor = Color3.fromRGB(0, 255, 0)
                         else
-                            highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Czerwony dla wroga
+                            highlight.FillColor = Color3.fromRGB(255, 0, 0)
                         end
                         
                         highlight.Enabled = getgenv().AvalonConfig.Wallhack
@@ -371,7 +432,6 @@ addToggle(tabTriggerbot, "Triggerbot", function(state)
                 if mouseTarget and mouseTarget.Parent then
                     local enemyPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent)
                     if enemyPlayer and enemyPlayer ~= localPlayer then
-                        -- Sprawdzenie czy cel to wróg (strzelaj tylko w czerwonych)
                         local isTeamMate = false
                         if localPlayer.Team and enemyPlayer.Team then
                             if localPlayer.Team == enemyPlayer.Team then
@@ -417,11 +477,4 @@ addToggle(tabMisc, "Anti-AFK", function(state)
             end
         end
     end)
-end)
-
--- Obsługa prawego Shifta (działa wyłącznie po poprawnej weryfikacji klucza)
-userInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.RightShift and getgenv().AvalonConfig.IsKeyVerified then
-        MainFrame.Visible = not MainFrame.Visible
-    end
 end)
