@@ -1,4 +1,4 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Nienaruszony Wallhack/Trigger/Aimbot + Dodane przyciski minimalizacji)
+-- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony i natychmiastowy Triggerbot + Oryginalny Wallhack/Aimbot)
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -517,19 +517,32 @@ addSlider(tabAimbot, "Skuteczność trafień", 1, 100, function(val)
     getgenv().AvalonConfig.HitChance = val
 end)
 
+-- Poprawiony Triggerbot reagujący bezpośrednio na najechane postacie z Wallhacka
 addToggle(tabTriggerbot, "Triggerbot", function(state)
     getgenv().AvalonConfig.Triggerbot = state
     task.spawn(function()
         while getgenv().AvalonConfig.Triggerbot do
-            task.wait(0.05)
+            task.wait(0.01)
             pcall(function()
                 local mouseTarget = localPlayer:GetMouse().Target
                 if mouseTarget and mouseTarget.Parent then
-                    local enemyPlayer = players:GetPlayerFromCharacter(mouseTarget.Parent)
-                    if enemyPlayer and enemyPlayer ~= localPlayer then
-                        if not (localPlayer.Team and enemyPlayer.Team and localPlayer.Team == enemyPlayer.Team) then
+                    local char = mouseTarget.Parent
+                    local player = players:GetPlayerFromCharacter(char)
+                    
+                    -- Jeśli celownik trafił w część modelu lub bezpośrednio w Highlight/ESP postaći wroga
+                    if not player and char.Parent then
+                        player = players:GetPlayerFromCharacter(char.Parent)
+                    end
+                    
+                    if player and player ~= localPlayer then
+                        local isEnemy = true
+                        if localPlayer.Team and player.Team and localPlayer.Team == player.Team then
+                            isEnemy = false
+                        end
+                        
+                        if isEnemy then
                             mouse1press()
-                            task.wait(0.05)
+                            task.wait(0.03)
                             mouse1release()
                         end
                     end
