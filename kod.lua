@@ -1,5 +1,5 @@
--- Palofsc Script: Ostateczna naprawa Auto Egg Farming & Garden (Bezpieczny podnosiciel i unikanie śmierci z zachowaniem wszystkich opcji)
--- Ten skrypt eliminuje efekt zabijania gracza podczas teleportacji, omija kolizje i bezpiecznie obsługuje zbieranie oraz zanoszenie jajek.
+-- Palofsc Script: Steal an Egg - Full Hub z wyświetlaniem współrzędnych X, Y, Z oraz gotowością na bazy i jajka
+-- Ten skrypt wyświetla na górnym pasku aktualną pozycję gracza w czasie rzeczywistym i integruje pełny system automatyzacji.
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -66,25 +66,49 @@ TopCorner.CornerRadius = UDim.new(0, 10)
 TopCorner.Parent = TopBar
 
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, -20, 1, 0)
+TitleLabel.Size = UDim2.new(0, 280, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "STEAL AN EGG | SAFE ULTRA FARM HUB"
+TitleLabel.Text = "STEAL AN EGG | XYZ & COORDS HUB"
 TitleLabel.TextColor3 = Color3.fromRGB(230, 30, 60)
-TitleLabel.TextSize = 13
+TitleLabel.TextSize = 12
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TopBar
 
+-- Wyświetlacz pozycji X, Y, Z na pasku tytułowym
+local CoordsLabel = Instance.new("TextLabel")
+CoordsLabel.Size = UDim2.new(0, 150, 1, 0)
+CoordsLabel.Position = UDim2.new(0, 280, 0, 0)
+CoordsLabel.BackgroundTransparency = 1
+CoordsLabel.Text = "X: 0 | Y: 0 | Z: 0"
+CoordsLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
+CoordsLabel.TextSize = 11
+CoordsLabel.Font = Enum.Font.GothamCode
+CoordsLabel.TextXAlignment = Enum.TextXAlignment.Left
+CoordsLabel.Parent = TopBar
+
 local HintLabel = Instance.new("TextLabel")
-HintLabel.Size = UDim2.new(1, -20, 1, 0)
+HintLabel.Size = UDim2.new(0, 130, 1, 0)
+HintLabel.Position = UDim2.new(1, -135, 0, 0)
 HintLabel.BackgroundTransparency = 1
-HintLabel.Text = "[Prawy Shift: Ukryj/Pokaż]"
+HintLabel.Text = "[P. Shift: Ukryj]"
 HintLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
 HintLabel.TextSize = 11
 HintLabel.Font = Enum.Font.Gotham
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 HintLabel.Parent = TopBar
+
+-- Aktualizacja współrzędnych X, Y, Z w czasie rzeczywistym
+runService.RenderStepped:Connect(function()
+    pcall(function()
+        local char = localPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local pos = char.HumanoidRootPart.Position
+            CoordsLabel.Text = string.format("X:%.0f Y:%.0f Z:%.0f", pos.X, pos.Y, pos.Z)
+        end
+    end)
+end)
 
 local TabContainer = Instance.new("ScrollingFrame")
 TabContainer.Size = UDim2.new(0, 145, 1, -50)
@@ -210,7 +234,7 @@ local tabVisual = createTab("Visual & ESP", 2)
 local tabAutos = createTab("Automation", 3)
 local tabPlayer = createTab("Gracz", 4)
 
--- 1. NAPRAWIONE AUTO EGG FARMING (Bezpieczny lot, zero śmierci, obsługa wszystkich ogrodów i baz)
+-- 1. Auto Egg Farming & Garden
 addToggle(tabFarm, "1. Auto Egg Farming & Garden", function(v)
     getgenv().EggConfig.AutoFarm = v
     task.spawn(function()
@@ -221,15 +245,12 @@ addToggle(tabFarm, "1. Auto Egg Farming & Garden", function(v)
                 if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
                 local hrp = char.HumanoidRootPart
                 local humanoid = char.Humanoid
-
                 if humanoid.Health <= 0 then return end
 
-                -- Wyłączenie uszkodzeń od upadku/kolizji podczas bezpiecznej pracy skryptu
                 for _, part in ipairs(char:GetDescendants()) do
                     if part:IsA("BasePart") then part.CanCollide = false end
                 end
 
-                -- Szukanie wszystkich możliwych ogrodów/baz gracza (wielokrotne wsparcie lokalizacji)
                 local targetGarden = nil
                 local basesFolder = workspace:FindFirstChild("Bases") or workspace:FindFirstChild("Plots") or workspace:FindFirstChild("Islands")
                 if basesFolder then
@@ -242,11 +263,9 @@ addToggle(tabFarm, "1. Auto Egg Farming & Garden", function(v)
                 end
                 if not targetGarden then targetGarden = workspace end
 
-                -- Sprawdzenie czy gracz trzyma jajko w ręce lub ekwipunku
                 local carriedItem = char:FindFirstChildOfClass("Tool") or localPlayer.Backpack:FindFirstChildOfClass("Tool")
 
                 if carriedItem then
-                    -- Bezpieczny powrót do ogrodu i zdeponowanie
                     hrp.CFrame = targetGarden:GetPivot() + Vector3.new(0, 5, 0)
                     task.wait(0.3)
                     for _, remote in ipairs(replicatedStorage:GetDescendants()) do
@@ -259,21 +278,14 @@ addToggle(tabFarm, "1. Auto Egg Farming & Garden", function(v)
                     end
                     task.wait(0.4)
                 else
-                    -- Szukanie jajek na mapie i bezpieczne zbieranie bez śmierci
-                    local foundEgg = false
                     for _, obj in ipairs(workspace:GetDescendants()) do
                         if not getgenv().EggConfig.AutoFarm then break end
                         if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
-                            -- Teleport tuż nad jajko z bezpieczną wysokością, zapobiegający wpadnięciu w tekstury
                             hrp.CFrame = obj.CFrame + Vector3.new(0, 4, 0)
                             task.wait(0.2)
-                            
                             for _, prompt in ipairs(obj:GetDescendants()) do
-                                if prompt:IsA("ProximityPrompt") then
-                                    fireproximityprompt(prompt)
-                                end
+                                if prompt:IsA("ProximityPrompt") then fireproximityprompt(prompt) end
                             end
-                            
                             for _, remote in ipairs(replicatedStorage:GetDescendants()) do
                                 if remote:IsA("RemoteEvent") then
                                     local rName = remote.Name:lower()
@@ -282,14 +294,9 @@ addToggle(tabFarm, "1. Auto Egg Farming & Garden", function(v)
                                     end
                                 end
                             end
-                            
-                            foundEgg = true
                             task.wait(0.4)
                             break
                         end
-                    end
-                    if not foundEgg then
-                        task.wait(1)
                     end
                 end
             end)
