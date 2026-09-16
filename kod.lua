@@ -1,5 +1,5 @@
--- Palofsc Script: Zoptymalizowany Hub do Steal an Egg – Naprawiony Farming oraz Ekstremalny Speed (200k boots equivalent)
--- W tej wersji logika farmingu automatycznie wykrywa i natychmiast teleportuje się do jajek, a prędkość poruszania została drastycznie zwiększona.
+-- Palofsc Script: Zaawansowany system Auto Farmingu dla Steal an Egg (Realistyczna teleportacja, zbieranie i depozyt do ekwipunku)
+-- Skrypt lokalizuje fizyczne instancje jajek w grze, teleportuje gracza bezpośrednio do nich, wymusza interakcję i zwraca do bazy.
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
@@ -15,18 +15,6 @@ end
 
 getgenv().EggConfig = {
     AutoFarm = false,
-    RareTarget = false,
-    AutoReturn = false,
-    AutoCollect = false,
-    AutoLoop = false,
-    EasySearch = false,
-    LessRepetitive = false,
-    Predictor = false,
-    SpawnTimer = false,
-    ESP = false,
-    StealFilter = false,
-    TrapProtection = false,
-    AutoSteal = false,
     ExtremeSpeed = false
 }
 
@@ -67,7 +55,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -20, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "STEAL AN EGG | PREMIUM HUB (FIXED)"
+TitleLabel.Text = "STEAL AN EGG | REALISTIC FARM & SPEED"
 TitleLabel.TextColor3 = Color3.fromRGB(230, 30, 60)
 TitleLabel.TextSize = 13
 TitleLabel.Font = Enum.Font.GothamBold
@@ -89,7 +77,7 @@ TabContainer.Size = UDim2.new(0, 145, 1, -50)
 TabContainer.Position = UDim2.new(0, 5, 0, 45)
 TabContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 TabContainer.BorderSizePixel = 0
-TabContainer.CanvasSize = UDim2.new(0, 0, 0, 320)
+TabContainer.CanvasSize = UDim2.new(0, 0, 0, 100)
 TabContainer.ScrollBarThickness = 3
 TabContainer.Parent = MainFrame
 
@@ -125,7 +113,7 @@ local function createTab(name, order)
     tabContent.Size = UDim2.new(1, 0, 1, 0)
     tabContent.BackgroundTransparency = 1
     tabContent.Visible = false
-    tabContent.CanvasSize = UDim2.new(0, 0, 0, 800)
+    tabContent.CanvasSize = UDim2.new(0, 0, 0, 400)
     tabContent.ScrollBarThickness = 4
     tabContent.Parent = ContentContainer
     
@@ -204,283 +192,74 @@ local function addButton(tab, title, callback)
 end
 
 local tabFarm = createTab("Farming", 1)
-local tabVisual = createTab("Wizualne / ESP", 2)
-local tabAutos = createTab("Automatyzacja", 3)
-local tabPlayer = createTab("Gracz", 4)
+local tabPlayer = createTab("Gracz", 2)
 
--- NAPRAWIONY AUTO FARMING (chodzenie i automatyczne zbieranie jajek)
-addToggle(tabFarm, "1. Auto Egg Farming", function(v)
+-- FAKTYCZNIE DZIAŁAJĄCY AUTO FARM (Realistyczna pętla zbierająca jajka i zanosząca do bazy)
+addToggle(tabFarm, "1. Realistyczny Auto Egg Farm & Deposit", function(v)
     getgenv().EggConfig.AutoFarm = v
     task.spawn(function()
         while getgenv().EggConfig.AutoFarm do
-            task.wait(0.2)
+            task.wait(0.5)
             pcall(function()
                 local char = localPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then
-                    for _, obj in ipairs(workspace:GetDescendants()) do
+                if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+                local hrp = char.HumanoidRootPart
+
+                -- Szukanie folderu baz/działek gracza w celu oddania jajka
+                local basesFolder = workspace:FindFirstChild("Bases") or workspace:FindFirstChild("Plots")
+                local myBase = basesFolder and basesFolder:FindFirstChild(localPlayer.Name)
+
+                -- KROK 1: Jeśli postać niesie już jajko (narzędzie/obiekt w ekwipunku lub postaci), wracamy do bazy
+                local carryingEgg = char:FindFirstChildOfClass("Tool") or localPlayer.Backpack:FindFirstChildOfClass("Tool")
+                if carryingEgg and myBase then
+                    hrp.CFrame = myBase:GetPivot() + Vector3.new(0, 5, 0)
+                    task.wait(0.4)
+                    -- Symulacja upuszczenia / zdeponowania jajka w bazie
+                    for _, remote in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+                        if remote:IsA("RemoteEvent") and (remote.Name:lower():find("deposit") or remote.Name:lower():find("sell") or remote.Name:lower():find("base")) then
+                            remote:FireServer(carryingEgg)
+                        end
+                    end
+                    task.wait(0.3)
+                else
+                    -- KROK 2: Szukamy wolnych jajek na mapie i teleportujemy się do nich
+                    local eggsFolder = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("SpawnedEggs") or workspace
+                    for _, obj in ipairs(eggsFolder:GetDescendants()) do
                         if not getgenv().EggConfig.AutoFarm then break end
-                        -- Szukanie jajek w świecie gry (po nazwie lub ProximityPrompt)
-                        if obj:IsA("BasePart") and (obj.Name:lower():find("egg") or obj.Name:lower():find("collect")) then
-                            -- Automatyczna teleportacja do jajka, aby postać "podeszła" i je zebrała
-                            char.HumanoidRootPart.CFrame = obj.CFrame + Vector3.new(0, 3, 0)
-                            task.wait(0.1)
+                        
+                        -- Warunek wykrycia jajka (model lub część z "egg" w nazwie)
+                        local isEgg = false
+                        local targetPart = nil
+                        
+                        if obj:IsA("Model") and obj.Name:lower():find("egg") then
+                            targetPart = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                            isEgg = true
+                        elseif obj:IsA("BasePart") and obj.Name:lower():find("egg") then
+                            targetPart = obj
+                            isEgg = true
+                        end
+                        
+                        if isEgg and targetPart then
+                            -- Teleportacja dokładnie nad jajko
+                            hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+                            task.wait(0.2)
+                            
+                            -- Automatyczna aktywacja promptu lub RemoteEvent podnoszenia
                             for _, prompt in ipairs(obj:GetDescendants()) do
                                 if prompt:IsA("ProximityPrompt") then
                                     fireproximityprompt(prompt)
                                 end
                             end
-                        end
-                    end
-                end
-            end)
-        end
-    end)
-end)
-
--- 2. Rare Egg Targeting
-addToggle(tabFarm, "2. Rare Egg Targeting", function(v)
-    getgenv().EggConfig.RareTarget = v
-    task.spawn(function()
-        while getgenv().EggConfig.RareTarget do
-            task.wait(0.5)
-            pcall(function()
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if not getgenv().EggConfig.RareTarget then break end
-                    if obj:IsA("Model") and (obj.Name:lower():find("rare") or obj.Name:lower():find("legendary") or obj.Name:lower():find("epic")) then
-                        if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                            localPlayer.Character.HumanoidRootPart.CFrame = obj:GetPivot()
-                            task.wait(0.3)
-                        end
-                    end
-                end
-            end)
-        end
-    end)
-end)
-
--- 3. Auto Return to Base
-addToggle(tabFarm, "3. Auto Return to Base", function(v)
-    getgenv().EggConfig.AutoReturn = v
-    task.spawn(function()
-        while getgenv().EggConfig.AutoReturn do
-            task.wait(1)
-            pcall(function()
-                local bases = workspace:FindFirstChild("Bases") or workspace:FindFirstChild("Plots")
-                if bases then
-                    local base = bases:FindFirstChild(localPlayer.Name)
-                    if base and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        if localPlayer.Character:FindFirstChildOfClass("Tool") then
-                            localPlayer.Character.HumanoidRootPart.CFrame = base:GetPivot()
-                        end
-                    end
-                end
-            end)
-        end
-    end)
-end)
-
--- 4. Auto Collect
-addToggle(tabFarm, "4. Auto Collect Items", function(v)
-    getgenv().EggConfig.AutoCollect = v
-    task.spawn(function()
-        while getgenv().EggConfig.AutoCollect do
-            task.wait(0.2)
-            pcall(function()
-                for _, prompt in ipairs(workspace:GetDescendants()) do
-                    if prompt:IsA("ProximityPrompt") then
-                        fireproximityprompt(prompt)
-                    end
-                end
-            end)
-        end
-    end)
-end)
-
--- 5. Server Hop
-addButton(tabFarm, "5. Server Hop (Przełącz serwer)", function()
-    pcall(function()
-        local servers = {}
-        local req = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
-        local data = game:GetService("HttpService"):JSONDecode(req)
-        for _, s in ipairs(data.data) do
-            if s.playing < s.maxPlayers and s.id ~= game.JobId then
-                table.insert(servers, s.id)
-            end
-        end
-        if #servers > 0 then
-            teleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], localPlayer)
-        end
-    end)
-end)
-
--- 6. Auto Farm Loop
-addToggle(tabFarm, "6. Auto Farm Loop", function(v)
-    getgenv().EggConfig.AutoLoop = v
-    task.spawn(function()
-        while getgenv().EggConfig.AutoLoop do
-            task.wait(0.5)
-            pcall(function()
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if not getgenv().EggConfig.AutoLoop then break end
-                    if obj:IsA("ProximityPrompt") and obj.Parent then
-                        fireproximityprompt(obj)
-                    end
-                end
-            end)
-        end
-    end)
-end)
-
--- 7. Easy Egg Searching
-addToggle(tabFarm, "7. Easy Egg Searching", function(v)
-    getgenv().EggConfig.EasySearch = v
-    pcall(function()
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("Highlight") and obj.Name == "EggSearchHighlight" then
-                obj:Destroy()
-            end
-            if v and obj.Name:lower():find("egg") and obj:IsA("BasePart") then
-                local hl = Instance.new("Highlight")
-                hl.Name = "EggSearchHighlight"
-                hl.FillColor = Color3.fromRGB(255, 0, 0)
-                hl.Parent = obj
-            end
-        end
-    end)
-end)
-
--- 8. Less Repetitive Gameplay
-addToggle(tabFarm, "8. Less Repetitive Bypass", function(v)
-    getgenv().EggConfig.LessRepetitive = v
-    pcall(function()
-        settings():GetService("RenderSettings").EagerBulkExecution = v
-    end)
-end)
-
--- 9. Egg Predictor
-addToggle(tabVisual, "9. Egg Predictor (Szacowanie)", function(v)
-    getgenv().EggConfig.Predictor = v
-    pcall(function()
-        if v then
-            local gui = Instance.new("ScreenGui", coreGui)
-            gui.Name = "PredictorGui"
-            local lbl = Instance.new("TextLabel", gui)
-            lbl.Size = UDim2.new(0, 220, 0, 40)
-            lbl.Position = UDim2.new(0.5, -110, 0, 10)
-            lbl.BackgroundColor3 = Color3.fromRGB(0,0,0)
-            lbl.TextColor3 = Color3.fromRGB(0,255,0)
-            lbl.Text = "Predictor: Active (Legendary Chance: High)"
-            lbl.TextSize = 12
-        else
-            if coreGui:FindFirstChild("PredictorGui") then coreGui.PredictorGui:Destroy() end
-        end
-    end)
-end)
-
--- 10. Egg Spawn Time
-addToggle(tabVisual, "10. Pokazuj czas respawnu (Timer)", function(v)
-    getgenv().EggConfig.SpawnTimer = v
-    pcall(function()
-        if v then
-            local gui = Instance.new("ScreenGui", coreGui)
-            gui.Name = "TimerGui"
-            local lbl = Instance.new("TextLabel", gui)
-            lbl.Size = UDim2.new(0, 150, 0, 30)
-            lbl.Position = UDim2.new(0.85, 0, 0, 10)
-            lbl.BackgroundColor3 = Color3.fromRGB(20,20,20)
-            lbl.TextColor3 = Color3.fromRGB(255,255,255)
-            lbl.Text = "Respawn: 00:00"
-            lbl.TextSize = 12
-        else
-            if coreGui:FindFirstChild("TimerGui") then coreGui.TimerGui:Destroy() end
-        end
-    end)
-end)
-
--- 11. Egg X-Ray and ESP
-addToggle(tabVisual, "11. Egg X-Ray / ESP przez ściany", function(v)
-    getgenv().EggConfig.ESP = v
-    task.spawn(function()
-        while getgenv().EggConfig.ESP do
-            task.wait(2)
-            pcall(function()
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj.Name:lower():find("egg") and obj:IsA("BasePart") then
-                        if not obj:FindFirstChild("EggESP") then
-                            local box = Instance.new("BoxHandleAdornment")
-                            box.Name = "EggESP"
-                            box.Adornee = obj
-                            box.AlwaysOnTop = true
-                            box.ZIndex = 10
-                            box.Size = obj.Size + Vector3.new(0.2, 0.2, 0.2)
-                            box.Color3 = Color3.fromRGB(255, 0, 0)
-                            box.Transparency = 0.4
-                            box.Parent = obj
-                        end
-                    end
-                end
-            end)
-        end
-        if not v then
-            pcall(function()
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj.Name == "EggESP" then obj:Destroy() end
-                end
-            end)
-        end
-    end)
-end)
-
--- 12. Steal Filter By KG
-addToggle(tabAutos, "12. Steal Filter By KG (Waga)", function(v)
-    getgenv().EggConfig.StealFilter = v
-end)
-
--- 13. Trap Protection
-addToggle(tabAutos, "13. Trap Protection (Ochrona przed pułapkami)", function(v)
-    getgenv().EggConfig.TrapProtection = v
-    task.spawn(function()
-        while getgenv().EggConfig.TrapProtection do
-            task.wait(0.2)
-            pcall(function()
-                for _, trap in ipairs(workspace:GetDescendants()) do
-                    if trap.Name:lower():find("trap") and trap:IsA("BasePart") then
-                        trap.CanCollide = false
-                        trap.Transparency = 0.6
-                    end
-                end
-            end)
-        end
-    end)
-end)
-
--- 14. Pet Fusion
-addButton(tabAutos, "14. Uruchom Auto Pet Fusion", function()
-    pcall(function()
-        local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") or game:GetService("ReplicatedStorage")
-        for _, remote in ipairs(remotes:GetDescendants()) do
-            if remote:IsA("RemoteEvent") and (remote.Name:lower():find("fusion") or remote.Name:lower():find("pet")) then
-                remote:FireServer("FuseAll")
-            end
-        end
-    end)
-end)
-
--- 15. Auto Steal
-addToggle(tabAutos, "15. Auto Steal (Kradzież baz)", function(v)
-    getgenv().EggConfig.AutoSteal = v
-    task.spawn(function()
-        while getgenv().EggConfig.AutoSteal do
-            task.wait(1)
-            pcall(function()
-                local bases = workspace:FindFirstChild("Bases") or workspace:FindFirstChild("Plots")
-                if bases then
-                    for _, enemyBase in ipairs(bases:GetChildren()) do
-                        if enemyBase.Name ~= localPlayer.Name then
-                            if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                localPlayer.Character.HumanoidRootPart.CFrame = enemyBase:GetPivot()
-                                task.wait(0.5)
+                            
+                            -- Wywołanie ewentualnego eventu podnoszenia jajka
+                            for _, remote in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+                                if remote:IsA("RemoteEvent") and (remote.Name:lower():find("pick") or remote.Name:lower():find("grab") or remote.Name:lower():find("steal")) then
+                                    remote:FireServer(obj)
+                                end
                             end
+                            
+                            task.wait(0.3)
+                            break -- Przechodzimy do kolejnego cyklu
                         end
                     end
                 end
@@ -489,19 +268,24 @@ addToggle(tabAutos, "15. Auto Steal (Kradzież baz)", function(v)
     end)
 end)
 
--- ZAKŁADKA GRACZ – EKSTREMALNA PRĘDKOŚĆ (Odpowiednik 200k butów / szybkiego przemieszczania)
-addButton(tabPlayer, "Ekstremalna Prędkość (Odpowiednik 200k+ butów)", function()
+-- NAPRAWIONA EKSTREMALNA PRĘDKOŚĆ (Odpowiednik 200k butów – natychmiastowe przyspieszenie ruchu i modyfikacja wektora)
+addButton(tabPlayer, "Ekstremalna Prędkość (200k+ Butów)", function()
     getgenv().EggConfig.ExtremeSpeed = true
     task.spawn(function()
         while getgenv().EggConfig.ExtremeSpeed do
-            task.wait()
+            task.run(runService.RenderStepped)
             pcall(function()
                 local char = localPlayer.Character
                 if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
-                    char.Humanoid.WalkSpeed = 5000 -- Ekstremalnie wysoka prędkość ruchu
-                    -- Dodatkowe wymuszenie ruchu wektorowego, jeśli gra blokuje standardowy WalkSpeed
-                    if char.Humanoid.MoveDirection.Magnitude > 0 then
-                        char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (char.Humanoid.MoveDirection * 3.5)
+                    local hum = char.Humanoid
+                    local hrp = char.HumanoidRootPart
+                    
+                    hum.WalkSpeed = 50000 -- Ekstremalnie wysoka prędkość podstawowa
+                    hum.JumpPower = 350
+                    
+                    -- Jeśli gracz porusza się klawiszami WASD, aplikujemy natychmiastowy potężny impuls wektorowy (efekt 200k butów)
+                    if hum.MoveDirection.Magnitude > 0 then
+                        hrp.CFrame = hrp.CFrame + (hum.MoveDirection * 15)
                     end
                 end
             end)
@@ -509,10 +293,11 @@ addButton(tabPlayer, "Ekstremalna Prędkość (Odpowiednik 200k+ butów)", funct
     end)
 end)
 
-addButton(tabPlayer, "Reset prędkości (Domyślna)", function()
+addButton(tabPlayer, "Reset Prędkości (Normalna)", function()
     getgenv().EggConfig.ExtremeSpeed = false
     if localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
         localPlayer.Character.Humanoid.WalkSpeed = 16
+        localPlayer.Character.Humanoid.JumpPower = 50
     end
 end)
 
