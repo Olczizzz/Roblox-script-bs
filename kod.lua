@@ -1,10 +1,11 @@
--- Palofsc Script: AvalonHub dla Blox Strike (Modern Minimalist Red/Black GUI)
--- Skrypt zawiera nowoczesny, minimalistyczny interfejs z zakładkami Wallhack, Aimbot oraz suwakiem skuteczności trafień.
+-- Palofsc Script: AvalonHub dla Blox Strike (Poprawiony Aimbot + Przycisk Anti-AFK)
+-- Skrypt integruje płynne celowanie (Aimbot) bezpośrednio na graczy drużyny przeciwnej oraz system Anti-AFK.
 
 local coreGui = game:GetService("CoreGui")
 local userInputService = game:GetService("UserInputService")
 local runService = game:GetService("RunService")
 local players = game:GetService("Players")
+local virtualUser = game:GetService("VirtualUser")
 local localPlayer = players.LocalPlayer
 local camera = workspace.CurrentCamera
 
@@ -15,7 +16,8 @@ end
 getgenv().AvalonConfig = {
     Wallhack = false,
     Aimbot = false,
-    HitChance = 100 -- Procent skuteczności trafień
+    AntiAFK = false,
+    HitChance = 100
 }
 
 -- Główny kontener GUI
@@ -23,10 +25,10 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AvalonHubBloxStrike"
 ScreenGui.Parent = coreGui
 
--- Okno główne (Nowoczesny minimalizm, czerń i czerwień)
+-- Okno główne
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 480, 0, 320)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -160)
+MainFrame.Size = UDim2.new(0, 480, 0, 340)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -170)
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -231,6 +233,7 @@ local function addSlider(tab, title, min, max, callback)
             local val = math.floor(min + (max - min) * percent)
             
             fill.Size = UDim2.new(percent, 0, 1, 0)
+            label.Text = title .. ": " + val + "%"
             label.Text = title .. ": " .. val .. "%"
             getgenv().AvalonConfig.HitChance = val
             pcall(function() callback(val) end)
@@ -238,11 +241,12 @@ local function addSlider(tab, title, min, max, callback)
     end)
 end
 
--- Tworzenie zakładek
+-- Zakładki
 local tabWallhack = createTab("Wallhack", 1)
 local tabAimbot = createTab("Aimbot", 2)
+local tabMisc = createTab("Misc / AFK", 3)
 
--- Zakładka Wallhack (Włącz / Wyłącz)
+-- 1. Wallhack (ESP)
 addToggle(tabWallhack, "Wallhack (ESP)", function(state)
     getgenv().AvalonConfig.Wallhack = state
     task.spawn(function()
@@ -277,7 +281,7 @@ addToggle(tabWallhack, "Wallhack (ESP)", function(state)
     end)
 end)
 
--- Zakładka Aimbot (Włącz / Wyłącz oraz suwak skuteczności)
+-- 2. Naprawiony Aimbot (Namierza celownik na najbliższego przeciwnika w polu widzenia)
 addToggle(tabAimbot, "Aimbot", function(state)
     getgenv().AvalonConfig.Aimbot = state
     task.spawn(function()
@@ -288,14 +292,24 @@ addToggle(tabAimbot, "Aimbot", function(state)
                 local shortestDist = math.huge
                 
                 for _, p in ipairs(players:GetPlayers()) do
-                    if p ~= localPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") then
+                    if p ~= localPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") then
                         if p.Character.Humanoid.Health > 0 then
-                            local pos, onScreen = camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
-                            if onScreen then
-                                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).Magnitude
-                                if dist < shortestDist then
-                                    shortestDist = dist
-                                    closestTarget = p.Character.HumanoidRootPart
+                            -- Sprawdzenie drużyny (jeśli gra posiada właściwość Team)
+                            local isEnemy = true
+                            if localPlayer.Team and p.Team and localPlayer.Team == p.Team then
+                                isEnemy = false
+                            end
+                            
+                            if isEnemy then
+                                local head = p.Character.Head
+                                local pos, onScreen = camera:WorldToViewportPoint(head.Position)
+                                if onScreen then
+                                    local mousePos = userInputService:GetMouseLocation()
+                                    local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+                                    if dist < shortestDist then
+                                        shortestDist = dist
+                                        closestTarget = head
+                                    end
                                 end
                             end
                         end
@@ -312,6 +326,30 @@ end)
 
 addSlider(tabAimbot, "Skuteczność trafień", 1, 100, function(val)
     getgenv().AvalonConfig.HitChance = val
+end)
+
+-- 3. Anti-AFK (Zakładka Misc)
+addToggle(tabMisc, "Anti-AFK", function(state)
+    getgenv().AvalonConfig.AntiAFK = state
+    task.spawn(function()
+        local connection
+        if getgenv().AvalonConfig.AntiAFK then
+            connection = localPlayer.Idled:Connect(function()
+                if getgenv().AvalonConfig.AntiAFK then
+                    virtualUser:Button2Down(Vector2.new(0,0), camera.CFrame)
+                    task.wait(1)
+                    virtualUser:Button2Up(Vector2.new(0,0), camera.CFrame)
+                end
+            end)
+        end
+        while getgenv().AvalonConfig.AntiAFK do
+            task.wait(60)
+            if not getgenv().AvalonConfig.AntiAFK and connection then
+                connection:Disconnect()
+                break
+            end
+        end
+    end)
 end)
 
 -- Ukrywanie / pokazywanie okna pod prawym Shiftem
